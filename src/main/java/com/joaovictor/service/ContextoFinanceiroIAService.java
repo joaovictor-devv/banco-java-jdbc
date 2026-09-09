@@ -8,7 +8,6 @@ import com.joaovictor.model.RevisaoMensal;
 import com.joaovictor.model.SituacaoFinanceira;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -20,7 +19,6 @@ public class ContextoFinanceiroIAService {
     private final MetaService metaService;
     private final RevisaoMensalService revisaoMensalService;
     private final AnaliseMetaService analiseMetaService;
-    private final CompromissoMetasService compromissoMetasService;
 
     public ContextoFinanceiroIAService() {
         this.situacaoService = new SituacaoFinanceiraService();
@@ -29,7 +27,6 @@ public class ContextoFinanceiroIAService {
         this.metaService = new MetaService();
         this.revisaoMensalService = new RevisaoMensalService();
         this.analiseMetaService = new AnaliseMetaService();
-        this.compromissoMetasService = new CompromissoMetasService();
     }
 
     public ContextoFinanceiroIA montar() {
@@ -49,8 +46,6 @@ public class ContextoFinanceiroIAService {
         ContextoFinanceiroIA contexto = montar();
         SituacaoFinanceira s = contexto.getSituacao();
         ResumoFinanceiro r = contexto.getResumo();
-        BigDecimal comprometimentoMetas = compromissoMetasService.calcularComprometimentoMensalTotal();
-        BigDecimal margemAposMetas = s.getMargemLivre().subtract(comprometimentoMetas);
 
         StringBuilder texto = new StringBuilder();
 
@@ -63,8 +58,8 @@ public class ContextoFinanceiroIAService {
                 .append("Despesas planejadas: R$ ").append(s.getDespesasPlanejadas()).append('\n')
                 .append("Valor planejado para guardar: R$ ").append(s.getValorPlanejadoGuardar()).append('\n')
                 .append("Margem livre antes das metas: R$ ").append(s.getMargemLivre()).append('\n')
-                .append("Comprometimento mensal total das metas: R$ ").append(comprometimentoMetas).append('\n')
-                .append("Margem disponível após as metas: R$ ").append(margemAposMetas).append("\n\n");
+                .append("Comprometimento mensal total das metas: R$ ").append(s.getComprometimentoMensalMetas()).append('\n')
+                .append("Margem disponível após as metas: R$ ").append(s.getMargemDisponivelAposMetas()).append("\n\n");
 
         texto.append("HISTÓRICO OPCIONAL DE TRANSAÇÕES DO MÊS:\n")
                 .append("Entradas registradas: R$ ").append(r.getTotalEntradas()).append('\n')
