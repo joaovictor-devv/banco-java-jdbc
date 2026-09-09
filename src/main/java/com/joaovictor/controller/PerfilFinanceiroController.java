@@ -30,7 +30,8 @@ public class PerfilFinanceiroController {
                 request.getGastoAlimentacao(),
                 request.getOutrasDespesas(),
                 request.getValorPlanejadoGuardar(),
-                request.getObjetivoPrincipal()
+                request.getObjetivoPrincipal(),
+                request.getSaldoAtual()
         );
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -42,14 +43,14 @@ public class PerfilFinanceiroController {
         return ResponseEntity.ok(service.buscarUltimoPerfil());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PerfilFinanceiro> buscarPorId(@PathVariable long id) {
-        return ResponseEntity.ok(service.buscarPorId(id));
-    }
-
     @GetMapping("/situacao")
     public ResponseEntity<SituacaoFinanceira> situacao() {
         return ResponseEntity.ok(situacaoService.analisar());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PerfilFinanceiro> buscarPorId(@PathVariable long id) {
+        return ResponseEntity.ok(service.buscarPorId(id));
     }
 
     @PutMapping("/{id}")
@@ -66,7 +67,8 @@ public class PerfilFinanceiroController {
                 request.getGastoAlimentacao(),
                 request.getOutrasDespesas(),
                 request.getValorPlanejadoGuardar(),
-                request.getObjetivoPrincipal()
+                request.getObjetivoPrincipal(),
+                request.getSaldoAtual()
         );
 
         return ResponseEntity.ok(new ApiResponse(true, "Perfil financeiro atualizado com sucesso."));
