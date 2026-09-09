@@ -3,12 +3,15 @@ package com.joaovictor.controller;
 import com.joaovictor.dto.ApiResponse;
 import com.joaovictor.dto.SaldoResponse;
 import com.joaovictor.dto.TransacaoRequest;
+import com.joaovictor.model.AnaliseGasto;
 import com.joaovictor.model.Transacao;
+import com.joaovictor.service.AnaliseGastoService;
 import com.joaovictor.service.TransacaoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -17,6 +20,7 @@ import java.util.List;
 public class TransacaoController {
 
     private final TransacaoService service = new TransacaoService();
+    private final AnaliseGastoService analiseGastoService = new AnaliseGastoService();
 
     @PostMapping("/entrada")
     public ResponseEntity<ApiResponse> registrarEntrada(@RequestBody TransacaoRequest request) {
@@ -42,6 +46,11 @@ public class TransacaoController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse(true, "Saída registrada com sucesso."));
+    }
+
+    @GetMapping("/analisar-gasto")
+    public ResponseEntity<AnaliseGasto> analisarGasto(@RequestParam BigDecimal valor) {
+        return ResponseEntity.ok(analiseGastoService.analisar(valor));
     }
 
     @GetMapping("/saldo")
