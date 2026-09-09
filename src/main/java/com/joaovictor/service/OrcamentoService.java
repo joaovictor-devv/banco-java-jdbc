@@ -5,9 +5,12 @@ import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.OrcamentoResumo;
 import com.joaovictor.model.PerfilFinanceiro;
 import com.joaovictor.repository.PerfilFinanceiroRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+@Service
 public class OrcamentoService {
 
     private final PerfilFinanceiroRepository perfilRepository;
@@ -17,6 +20,7 @@ public class OrcamentoService {
         this(new PerfilFinanceiroRepository(), new MotorFinanceiroService());
     }
 
+    @Autowired
     public OrcamentoService(PerfilFinanceiroRepository perfilRepository,
                             MotorFinanceiroService motorFinanceiroService) {
         this.perfilRepository = perfilRepository;
