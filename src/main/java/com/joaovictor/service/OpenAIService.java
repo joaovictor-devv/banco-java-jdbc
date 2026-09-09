@@ -1,5 +1,6 @@
 package com.joaovictor.service;
 
+import com.joaovictor.exception.IAIndisponivelException;
 import com.joaovictor.model.RespostaIA;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
@@ -12,13 +13,16 @@ import org.springframework.stereotype.Service;
 public class OpenAIService {
 
     private final ContextoFinanceiroIAService contextoService;
+    private final String apiKey;
     private final String model;
     private volatile OpenAIClient client;
 
     public OpenAIService(
             ContextoFinanceiroIAService contextoService,
+            @Value("${openai.api-key:}") String apiKey,
             @Value("${openai.model:gpt-5-mini}") String model) {
         this.contextoService = contextoService;
+        this.apiKey = apiKey;
         this.model = model;
     }
 
@@ -27,8 +31,10 @@ public class OpenAIService {
             throw new IllegalArgumentException("A pergunta é obrigatória.");
         }
 
-        if (System.getenv("OPENAI_API_KEY") == null || System.getenv("OPENAI_API_KEY").isBlank()) {
-            throw new IllegalStateException("A variável de ambiente OPENAI_API_KEY não foi configurada.");
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IAIndisponivelException(
+                    "A IA está indisponível porque a variável OPENAI_API_KEY não foi configurada."
+            );
         }
 
         String contexto = contextoService.montarTexto();
@@ -39,20 +45,22 @@ public class OpenAIService {
                 1. Use exclusivamente os dados financeiros fornecidos pelo backend.
                 2. Nunca invente renda, gastos, saldo, margem, metas ou valores.
                 3. Os cálculos feitos pelo backend são a fonte de verdade.
-                4. Ao analisar uma compra, diga se ela é recomendável considerando saldo, margem livre e compromissos.
-                5. Ao analisar uma meta, considere valor mensal necessário, prazo, margem livre e outras metas.
-                6. Se uma decisão for inviável ou arriscada, avise claramente e explique o motivo.
-                7. Se os dados forem insuficientes, diga exatamente o que não pode ser concluído.
-                8. Não substitua um profissional financeiro.
-                9. Responda sempre em português do Brasil, de forma clara, prática e objetiva.
-                10. Não diga que realizou cálculos que não estejam presentes nos dados recebidos.
+                4. O saldo atual informado no perfil é a fonte para disponibilidade imediata de dinheiro.
+                5. O histórico de transações é opcional e não deve substituir o saldo informado.
+                6. Ao analisar uma compra, considere saldo atual, margem mensal e compromissos das metas.
+                7. Ao analisar uma meta, considere valor mensal necessário, prazo, margem disponível e outras metas.
+                8. Se uma decisão for inviável ou arriscada, avise claramente e explique o motivo.
+                9. Se os dados forem insuficientes, diga exatamente o que não pode ser concluído.
+                10. Não substitua um profissional financeiro e não prometa resultados financeiros.
+                11. Responda sempre em português do Brasil, de forma clara, prática e objetiva.
+                12. Não refaça ou altere números calculados pelo backend sem explicar explicitamente que se trata apenas de uma simulação.
                 """;
 
         String input = instrucoes
                 + "\n\nDADOS FINANCEIROS DO FINIA:\n"
                 + contexto
                 + "\n\nPERGUNTA DO USUÁRIO:\n"
-                + pergunta;
+                + pergunta.trim();
 
         try {
             ResponseCreateParams params = ResponseCreateParams.builder()
@@ -71,14 +79,17 @@ public class OpenAIService {
                     .trim();
 
             if (resposta.isBlank()) {
-                throw new IllegalStateException("A IA não retornou uma resposta de texto.");
+                throw new IAIndisponivelException("A IA respondeu sem conteúdo de texto utilizável.");
             }
 
             return new RespostaIA(true, resposta);
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (IAIndisponivelException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("Não foi possível consultar a IA da OpenAI.", e);
+            throw new IAIndisponivelException(
+                    "Não foi possível consultar a IA da OpenAI no momento.",
+                    e
+            );
         }
     }
 
@@ -86,10 +97,13 @@ public class OpenAIService {
         if (client == null) {
             synchronized (this) {
                 if (client == null) {
-                    client = OpenAIOkHttpClient.fromEnv();
+                    client = OpenAIOkHttpClient.builder()
+                            .apiKey(apiKey)
+                            .build();
                 }
             }
         }
+
         return client;
     }
 }
