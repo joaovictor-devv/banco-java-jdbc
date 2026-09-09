@@ -16,11 +16,18 @@ public class AnaliseGastoService {
     }
 
     public AnaliseGasto analisar(BigDecimal valor) {
+        return analisar(valor, motorFinanceiroService.calcularCapacidade());
+    }
+
+    public AnaliseGasto analisar(BigDecimal valor, CapacidadeFinanceira capacidade) {
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("O valor do gasto deve ser maior que zero.");
         }
 
-        CapacidadeFinanceira capacidade = motorFinanceiroService.calcularCapacidade();
+        if (capacidade == null) {
+            throw new IllegalArgumentException("A capacidade financeira é obrigatória para analisar o gasto.");
+        }
+
         BigDecimal saldoAtual = capacidade.getSaldoAtual();
         BigDecimal margemLivre = capacidade.getMargemAntesMetas();
         BigDecimal comprometimentoMetas = capacidade.getComprometimentoMensalMetas();
