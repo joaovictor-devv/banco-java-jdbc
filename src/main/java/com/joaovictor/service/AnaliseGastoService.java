@@ -2,9 +2,12 @@ package com.joaovictor.service;
 
 import com.joaovictor.model.AnaliseGasto;
 import com.joaovictor.model.CapacidadeFinanceira;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+@Service
 public class AnaliseGastoService {
 
     private static final BigDecimal LIMITE_ATENCAO = new BigDecimal("0.80");
@@ -12,7 +15,12 @@ public class AnaliseGastoService {
     private final MotorFinanceiroService motorFinanceiroService;
 
     public AnaliseGastoService() {
-        this.motorFinanceiroService = new MotorFinanceiroService();
+        this(new MotorFinanceiroService());
+    }
+
+    @Autowired
+    public AnaliseGastoService(MotorFinanceiroService motorFinanceiroService) {
+        this.motorFinanceiroService = motorFinanceiroService;
     }
 
     public AnaliseGasto analisar(BigDecimal valor) {
