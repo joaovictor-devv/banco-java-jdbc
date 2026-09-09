@@ -1,17 +1,25 @@
 package com.joaovictor.service;
 
 import com.joaovictor.model.Meta;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
+@Service
 public class CompromissoMetasService {
 
     private final MetaService metaService;
 
     public CompromissoMetasService() {
-        this.metaService = new MetaService();
+        this(new MetaService());
+    }
+
+    @Autowired
+    public CompromissoMetasService(MetaService metaService) {
+        this.metaService = metaService;
     }
 
     public BigDecimal calcularValorMensal(Meta meta) {
