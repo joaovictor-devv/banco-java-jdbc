@@ -15,3 +15,7 @@ export function excluirMeta(id) {
 export function buscarMetaPorId(id) {
   return api.get(`/metas/${id}`);
 }
+
+export function analisarViabilidadeMeta(id) {
+  return api.get(`/metas/${id}/viabilidade`);
+}
