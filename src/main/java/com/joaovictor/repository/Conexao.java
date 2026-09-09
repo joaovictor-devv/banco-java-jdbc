@@ -6,19 +6,34 @@ import java.sql.SQLException;
 
 public class Conexao {
 
-    private static final String URL =
+    private static final String URL_PADRAO =
             "jdbc:mysql://localhost:3306/banco_app" +
                     "?useSSL=false" +
-                    "&serverTimezone=UTC" +
+                    "&serverTimezone=America/Sao_Paulo" +
                     "&allowPublicKeyRetrieval=true";
-
-    private static final String USER = "root";
-    private static final String PASSWORD = "root";
 
     private Conexao() {
     }
 
     public static Connection abrir() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+        String url = configuracao("DB_URL", URL_PADRAO);
+        String usuario = configuracao("DB_USER", "root");
+        String senha = configuracao("DB_PASSWORD", "root");
+
+        return DriverManager.getConnection(url, usuario, senha);
+    }
+
+    private static String configuracao(String nome, String valorPadrao) {
+        String valorSistema = System.getProperty(nome);
+        if (valorSistema != null && !valorSistema.isBlank()) {
+            return valorSistema;
+        }
+
+        String valorAmbiente = System.getenv(nome);
+        if (valorAmbiente != null && !valorAmbiente.isBlank()) {
+            return valorAmbiente;
+        }
+
+        return valorPadrao;
     }
 }
