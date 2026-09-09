@@ -9,6 +9,7 @@ import com.joaovictor.model.Meta;
 import com.joaovictor.model.SituacaoFinanceira;
 import com.joaovictor.service.AnaliseGastoService;
 import com.joaovictor.service.AnaliseMetaService;
+import com.joaovictor.service.MetaService;
 import com.joaovictor.service.MotorFinanceiroService;
 import com.joaovictor.service.SituacaoFinanceiraService;
 import com.joaovictor.service.SugestaoFinanceiraService;
@@ -27,6 +28,7 @@ public class AnaliseController {
     private final MotorFinanceiroService motorFinanceiroService = new MotorFinanceiroService();
     private final AnaliseGastoService analiseGastoService = new AnaliseGastoService();
     private final AnaliseMetaService analiseMetaService = new AnaliseMetaService();
+    private final MetaService metaService = new MetaService();
 
     @GetMapping("/situacao")
     public ResponseEntity<SituacaoFinanceira> situacao() {
@@ -54,19 +56,31 @@ public class AnaliseController {
 
     @PostMapping("/simular-meta")
     public ResponseEntity<AnaliseMeta> simularMeta(@RequestBody SimulacaoMetaRequest request) {
-        validarSimulacaoMeta(request);
+        if (request == null) {
+            throw new IllegalArgumentException("Os dados da simulação da meta são obrigatórios.");
+        }
 
         BigDecimal valorInicial = request.getValorInicial() != null
                 ? request.getValorInicial()
                 : BigDecimal.ZERO;
-
         String nome = request.getNome() == null || request.getNome().isBlank()
                 ? "Meta simulada"
                 : request.getNome().trim();
-
         String prioridade = request.getPrioridade() == null || request.getPrioridade().isBlank()
                 ? "media"
                 : request.getPrioridade().trim();
+
+        metaService.validarMeta(
+                nome,
+                request.getValorAlvo(),
+                request.getPrazoMeses(),
+                valorInicial,
+                prioridade
+        );
+
+        if (request.getDescricao() != null && request.getDescricao().trim().length() > 255) {
+            throw new IllegalArgumentException("A descrição deve ter no máximo 255 caracteres.");
+        }
 
         Meta meta = new Meta(
                 nome,
@@ -74,32 +88,9 @@ public class AnaliseController {
                 request.getPrazoMeses(),
                 valorInicial,
                 prioridade,
-                request.getDescricao()
+                request.getDescricao() == null ? null : request.getDescricao().trim()
         );
 
         return ResponseEntity.ok(analiseMetaService.analisar(meta));
-    }
-
-    private void validarSimulacaoMeta(SimulacaoMetaRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("Os dados da simulação da meta são obrigatórios.");
-        }
-
-        if (request.getValorAlvo() == null || request.getValorAlvo().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("O valor alvo da meta deve ser maior que zero.");
-        }
-
-        if (request.getPrazoMeses() == null || request.getPrazoMeses() <= 0) {
-            throw new IllegalArgumentException("O prazo da meta deve ser maior que zero.");
-        }
-
-        if (request.getValorInicial() != null && request.getValorInicial().compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("O valor inicial da meta não pode ser negativo.");
-        }
-
-        if (request.getValorInicial() != null
-                && request.getValorInicial().compareTo(request.getValorAlvo()) > 0) {
-            throw new IllegalArgumentException("O valor inicial não pode ser maior que o valor alvo.");
-        }
     }
 }
