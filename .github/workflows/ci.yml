@@ -24,8 +24,8 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Compilar backend
-        run: mvn -B -DskipTests package
+      - name: Compilar e testar backend
+        run: mvn -B verify
 
   frontend:
     name: Frontend React
