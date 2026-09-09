@@ -6,9 +6,7 @@ import com.joaovictor.model.AnaliseGasto;
 import com.joaovictor.model.AnaliseMeta;
 import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.Meta;
-import com.joaovictor.model.ResumoFinanceiro;
 import com.joaovictor.model.SituacaoFinanceira;
-import com.joaovictor.service.AnaliseFinanceiraService;
 import com.joaovictor.service.AnaliseGastoService;
 import com.joaovictor.service.AnaliseMetaService;
 import com.joaovictor.service.MotorFinanceiroService;
@@ -24,17 +22,11 @@ import java.util.List;
 @RequestMapping("/analise")
 public class AnaliseController {
 
-    private final AnaliseFinanceiraService analiseService = new AnaliseFinanceiraService();
     private final SugestaoFinanceiraService sugestaoService = new SugestaoFinanceiraService();
     private final SituacaoFinanceiraService situacaoService = new SituacaoFinanceiraService();
     private final MotorFinanceiroService motorFinanceiroService = new MotorFinanceiroService();
     private final AnaliseGastoService analiseGastoService = new AnaliseGastoService();
     private final AnaliseMetaService analiseMetaService = new AnaliseMetaService();
-
-    @GetMapping("/resumo")
-    public ResponseEntity<ResumoFinanceiro> resumo() {
-        return ResponseEntity.ok(analiseService.gerarResumoDoMesAtual());
-    }
 
     @GetMapping("/situacao")
     public ResponseEntity<SituacaoFinanceira> situacao() {
