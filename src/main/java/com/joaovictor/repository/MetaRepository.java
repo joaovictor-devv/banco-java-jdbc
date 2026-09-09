@@ -8,14 +8,14 @@ import java.util.List;
 
 public class MetaRepository {
 
-    public void salvar(Meta meta) {
+    public long salvar(Meta meta) {
         String sql = """
                 INSERT INTO metas (nome, valor_alvo, prazo_meses, valor_inicial, prioridade, descricao)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = Conexao.abrir();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setString(1, meta.getNome());
             stmt.setBigDecimal(2, meta.getValorAlvo());
@@ -25,6 +25,14 @@ public class MetaRepository {
             stmt.setString(6, meta.getDescricao());
 
             stmt.executeUpdate();
+
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+
+            throw new RuntimeException("Não foi possível obter o id da meta criada.");
 
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao salvar meta.", e);
