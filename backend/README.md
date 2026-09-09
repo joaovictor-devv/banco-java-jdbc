@@ -1,53 +1,17 @@
-# Banco Java (Mini Sistema Bancário)
+# Backend legado — não executar
 
-Mini sistema bancário desenvolvido em Java utilizando JDBC e MySQL, seguindo o modelo de ledger (saldo calculado a partir do histórico de transações).
+Esta pasta contém uma versão antiga do backend e foi mantida temporariamente apenas para preservar o histórico do projeto.
 
-## Funcionalidades
+## Backend oficial do FinIA
 
-- Depósito de valores  
-- Saque com validação de saldo insuficiente  
-- Cálculo de saldo por histórico  
-- Extrato de transações  
-- Interface gráfica em Swing  
-- Persistência com MySQL + JDBC  
+O código que deve ser compilado, executado e alterado está na **raiz do repositório**:
 
-## Arquitetura
-
-O sistema utiliza o modelo contábil:
-
-saldo = depósitos − saques
-
-O saldo não é armazenado, sendo sempre calculado a partir do histórico.
-
-## Tecnologias
-
-- Java 21+  
-- Maven  
-- MySQL  
-- JDBC  
-- Swing  
-
-## Configuração do banco
-
-Por padrão o sistema usa:
-
-- host: localhost  
-- banco: banco_app  
-- usuário: root  
-- senha: root  
-
-Opcionalmente, é possível sobrescrever via variáveis de ambiente:
-
-```bash
-DB_USER=seu_usuario
-DB_PASSWORD=sua_senha
+```text
+pom.xml
+src/main/java/
+src/main/resources/
 ```
 
-## Como executar a interface
+Para iniciar o backend oficial, abra o `pom.xml` da raiz no IntelliJ ou execute Maven na raiz do projeto.
 
-```bash
-mvn clean compile
-mvn exec:java -Dexec.mainClass=com.joaovictor.BancoUI
-```
-
-Projeto em evolução.
+Não implemente novas funcionalidades dentro desta pasta `backend/`, pois isso voltaria a criar duas versões diferentes da API.
