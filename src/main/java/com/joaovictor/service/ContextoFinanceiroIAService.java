@@ -1,6 +1,7 @@
 package com.joaovictor.service;
 
 import com.joaovictor.model.AnaliseMeta;
+import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.ContextoFinanceiroIA;
 import com.joaovictor.model.Meta;
 import com.joaovictor.model.ResumoFinanceiro;
@@ -19,6 +20,7 @@ public class ContextoFinanceiroIAService {
     private final MetaService metaService;
     private final RevisaoMensalService revisaoMensalService;
     private final AnaliseMetaService analiseMetaService;
+    private final MotorFinanceiroService motorFinanceiroService;
 
     public ContextoFinanceiroIAService() {
         this.situacaoService = new SituacaoFinanceiraService();
@@ -27,6 +29,7 @@ public class ContextoFinanceiroIAService {
         this.metaService = new MetaService();
         this.revisaoMensalService = new RevisaoMensalService();
         this.analiseMetaService = new AnaliseMetaService();
+        this.motorFinanceiroService = new MotorFinanceiroService();
     }
 
     public ContextoFinanceiroIA montar() {
@@ -46,6 +49,7 @@ public class ContextoFinanceiroIAService {
         ContextoFinanceiroIA contexto = montar();
         SituacaoFinanceira s = contexto.getSituacao();
         ResumoFinanceiro r = contexto.getResumo();
+        CapacidadeFinanceira capacidade = motorFinanceiroService.calcularCapacidade();
 
         StringBuilder texto = new StringBuilder();
 
@@ -60,6 +64,14 @@ public class ContextoFinanceiroIAService {
                 .append("Margem livre antes das metas: R$ ").append(s.getMargemLivre()).append('\n')
                 .append("Comprometimento mensal total das metas: R$ ").append(s.getComprometimentoMensalMetas()).append('\n')
                 .append("Margem disponível após as metas: R$ ").append(s.getMargemDisponivelAposMetas()).append("\n\n");
+
+        texto.append("CAPACIDADE DE GASTO CALCULADA PELO MOTOR:\n")
+                .append("Total de compromissos mensais: R$ ").append(capacidade.getTotalCompromissosMensais()).append('\n')
+                .append("Percentual da renda comprometida: ").append(capacidade.getPercentualRendaComprometida()).append("%\n")
+                .append("Capacidade para novos gastos no mês: R$ ").append(capacidade.getCapacidadeGastoMensal()).append('\n')
+                .append("Limite de gasto imediato recomendado: R$ ").append(capacidade.getCapacidadeGastoImediato()).append('\n')
+                .append("Classificação do motor: ").append(capacidade.getClassificacao()).append('\n')
+                .append("Explicação do motor: ").append(capacidade.getMensagem()).append("\n\n");
 
         texto.append("HISTÓRICO OPCIONAL DE TRANSAÇÕES DO MÊS:\n")
                 .append("Entradas registradas: R$ ").append(r.getTotalEntradas()).append('\n')
