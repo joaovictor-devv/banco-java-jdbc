@@ -10,6 +10,8 @@ public class SituacaoFinanceira {
     private final BigDecimal despesasPlanejadas;
     private final BigDecimal valorPlanejadoGuardar;
     private final BigDecimal margemLivre;
+    private final BigDecimal comprometimentoMensalMetas;
+    private final BigDecimal margemDisponivelAposMetas;
     private final BigDecimal saldoAtual;
     private final BigDecimal saldoMesAtual;
     private final BigDecimal entradasMesAtual;
@@ -22,6 +24,8 @@ public class SituacaoFinanceira {
                               BigDecimal despesasPlanejadas,
                               BigDecimal valorPlanejadoGuardar,
                               BigDecimal margemLivre,
+                              BigDecimal comprometimentoMensalMetas,
+                              BigDecimal margemDisponivelAposMetas,
                               BigDecimal saldoAtual,
                               BigDecimal saldoMesAtual,
                               BigDecimal entradasMesAtual,
@@ -33,6 +37,8 @@ public class SituacaoFinanceira {
         this.despesasPlanejadas = despesasPlanejadas;
         this.valorPlanejadoGuardar = valorPlanejadoGuardar;
         this.margemLivre = margemLivre;
+        this.comprometimentoMensalMetas = comprometimentoMensalMetas;
+        this.margemDisponivelAposMetas = margemDisponivelAposMetas;
         this.saldoAtual = saldoAtual;
         this.saldoMesAtual = saldoMesAtual;
         this.entradasMesAtual = entradasMesAtual;
@@ -46,6 +52,8 @@ public class SituacaoFinanceira {
     public BigDecimal getDespesasPlanejadas() { return despesasPlanejadas; }
     public BigDecimal getValorPlanejadoGuardar() { return valorPlanejadoGuardar; }
     public BigDecimal getMargemLivre() { return margemLivre; }
+    public BigDecimal getComprometimentoMensalMetas() { return comprometimentoMensalMetas; }
+    public BigDecimal getMargemDisponivelAposMetas() { return margemDisponivelAposMetas; }
     public BigDecimal getSaldoAtual() { return saldoAtual; }
     public BigDecimal getSaldoMesAtual() { return saldoMesAtual; }
     public BigDecimal getEntradasMesAtual() { return entradasMesAtual; }
