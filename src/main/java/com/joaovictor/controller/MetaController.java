@@ -21,7 +21,7 @@ public class MetaController {
 
     @PostMapping
     public ResponseEntity<ApiResponse> cadastrar(@RequestBody MetaRequest request) {
-        service.cadastrarMeta(
+        Meta meta = service.cadastrarMeta(
                 request.getValorAlvo(),
                 request.getNome(),
                 request.getPrazoMeses(),
@@ -30,8 +30,11 @@ public class MetaController {
                 request.getDescricao()
         );
 
+        AnaliseMeta analise = analiseMetaService.analisar(meta);
+        String mensagem = "Meta cadastrada com sucesso. " + analise.getMensagem();
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse(true, "Meta cadastrada com sucesso."));
+                .body(new ApiResponse(true, mensagem));
     }
 
     @GetMapping
