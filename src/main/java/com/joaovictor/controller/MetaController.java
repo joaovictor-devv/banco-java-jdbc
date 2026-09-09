@@ -62,6 +62,20 @@ public class MetaController {
         return ResponseEntity.ok(service.listarMetas());
     }
 
+    @GetMapping("/resumo")
+    public ResponseEntity<List<MetaAnaliseResponse>> listarComAnalise() {
+        List<MetaAnaliseResponse> resultado = service.listarMetas()
+                .stream()
+                .map(meta -> new MetaAnaliseResponse(
+                        meta,
+                        analiseMetaService.analisar(meta),
+                        "Análise calculada com a situação financeira atual."
+                ))
+                .toList();
+
+        return ResponseEntity.ok(resultado);
+    }
+
     @GetMapping("/{id}/viabilidade")
     public ResponseEntity<AnaliseMeta> analisarViabilidade(@PathVariable long id) {
         return ResponseEntity.ok(analiseMetaService.analisar(id));
