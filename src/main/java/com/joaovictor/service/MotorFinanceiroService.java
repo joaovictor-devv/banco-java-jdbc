@@ -1,12 +1,16 @@
 package com.joaovictor.service;
 
+import com.joaovictor.exception.RecursoNaoEncontradoException;
 import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.PerfilFinanceiro;
 import com.joaovictor.repository.PerfilFinanceiroRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+@Service
 public class MotorFinanceiroService {
 
     private static final BigDecimal CEM = new BigDecimal("100");
@@ -16,15 +20,21 @@ public class MotorFinanceiroService {
     private final CompromissoMetasService compromissoMetasService;
 
     public MotorFinanceiroService() {
-        this.perfilRepository = new PerfilFinanceiroRepository();
-        this.compromissoMetasService = new CompromissoMetasService();
+        this(new PerfilFinanceiroRepository(), new CompromissoMetasService());
+    }
+
+    @Autowired
+    public MotorFinanceiroService(PerfilFinanceiroRepository perfilRepository,
+                                  CompromissoMetasService compromissoMetasService) {
+        this.perfilRepository = perfilRepository;
+        this.compromissoMetasService = compromissoMetasService;
     }
 
     public CapacidadeFinanceira calcularCapacidade() {
         PerfilFinanceiro perfil = perfilRepository.buscarUltimoPerfil();
 
         if (perfil == null) {
-            throw new IllegalArgumentException("Nenhum perfil financeiro foi cadastrado ainda.");
+            throw new RecursoNaoEncontradoException("Nenhum perfil financeiro foi cadastrado ainda.");
         }
 
         BigDecimal comprometimentoMensalMetas = compromissoMetasService.calcularComprometimentoMensalTotal();
