@@ -13,6 +13,7 @@ public class ResultadoSimulacaoFinanceira {
     private final BigDecimal variacaoSaldo;
     private final BigDecimal totalReservaPlanejada;
     private final BigDecimal totalAportadoMetas;
+    private final BigDecimal totalRendasExtraordinarias;
     private final BigDecimal totalGastosExtraordinarios;
     private final String classificacaoFinal;
     private final String mensagem;
@@ -28,6 +29,7 @@ public class ResultadoSimulacaoFinanceira {
                                         BigDecimal variacaoSaldo,
                                         BigDecimal totalReservaPlanejada,
                                         BigDecimal totalAportadoMetas,
+                                        BigDecimal totalRendasExtraordinarias,
                                         BigDecimal totalGastosExtraordinarios,
                                         String classificacaoFinal,
                                         String mensagem,
@@ -42,6 +44,7 @@ public class ResultadoSimulacaoFinanceira {
         this.variacaoSaldo = variacaoSaldo;
         this.totalReservaPlanejada = totalReservaPlanejada;
         this.totalAportadoMetas = totalAportadoMetas;
+        this.totalRendasExtraordinarias = totalRendasExtraordinarias;
         this.totalGastosExtraordinarios = totalGastosExtraordinarios;
         this.classificacaoFinal = classificacaoFinal;
         this.mensagem = mensagem;
@@ -58,6 +61,7 @@ public class ResultadoSimulacaoFinanceira {
     public BigDecimal getVariacaoSaldo() { return variacaoSaldo; }
     public BigDecimal getTotalReservaPlanejada() { return totalReservaPlanejada; }
     public BigDecimal getTotalAportadoMetas() { return totalAportadoMetas; }
+    public BigDecimal getTotalRendasExtraordinarias() { return totalRendasExtraordinarias; }
     public BigDecimal getTotalGastosExtraordinarios() { return totalGastosExtraordinarios; }
     public String getClassificacaoFinal() { return classificacaoFinal; }
     public String getMensagem() { return mensagem; }
