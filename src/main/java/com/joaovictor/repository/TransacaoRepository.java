@@ -25,12 +25,7 @@ public class TransacaoRepository {
         try (Connection conn = Conexao.abrir();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, transacao.getTipo());
-            stmt.setBigDecimal(2, transacao.getValor());
-            stmt.setString(3, transacao.getDescricao());
-            stmt.setString(4, transacao.getCategoria());
-            stmt.setDate(5, Date.valueOf(transacao.getDataTransacao()));
-
+            preencherTransacao(stmt, transacao);
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -38,7 +33,52 @@ public class TransacaoRepository {
         }
     }
 
-    public BigDecimal calcularSaldo() {
+    public void salvarEAjustarSaldo(Transacao transacao, long perfilId, BigDecimal novoSaldo) {
+        String sqlTransacao = """
+                INSERT INTO transacoes (tipo, valor, descricao, categoria, data_transacao)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+        String sqlSaldo = "UPDATE perfil_financeiro SET saldo_atual = ? WHERE id = ?";
+
+        try (Connection conn = Conexao.abrir()) {
+            boolean autoCommitAnterior = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement stmtTransacao = conn.prepareStatement(sqlTransacao);
+                 PreparedStatement stmtSaldo = conn.prepareStatement(sqlSaldo)) {
+
+                preencherTransacao(stmtTransacao, transacao);
+                stmtTransacao.executeUpdate();
+
+                stmtSaldo.setBigDecimal(1, novoSaldo);
+                stmtSaldo.setLong(2, perfilId);
+
+                if (stmtSaldo.executeUpdate() == 0) {
+                    throw new SQLException("Perfil financeiro não encontrado para atualização do saldo.");
+                }
+
+                conn.commit();
+            } catch (Exception e) {
+                try {
+                    conn.rollback();
+                } catch (SQLException rollbackErro) {
+                    e.addSuppressed(rollbackErro);
+                }
+                throw e;
+            } finally {
+                conn.setAutoCommit(autoCommitAnterior);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao registrar transação e atualizar saldo.", e);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao registrar transação e atualizar saldo.", e);
+        }
+    }
+
+    public BigDecimal calcularSaldoHistorico() {
         String sql = """
                 SELECT
                     COALESCE(SUM(CASE WHEN tipo = 'ENTRADA' THEN valor ELSE 0 END), 0) -
@@ -57,7 +97,7 @@ public class TransacaoRepository {
             return BigDecimal.ZERO;
 
         } catch (SQLException e) {
-            throw new RuntimeException("Erro ao calcular saldo.", e);
+            throw new RuntimeException("Erro ao calcular saldo histórico.", e);
         }
     }
 
@@ -202,6 +242,14 @@ public class TransacaoRepository {
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao buscar total mensal.", e);
         }
+    }
+
+    private void preencherTransacao(PreparedStatement stmt, Transacao transacao) throws SQLException {
+        stmt.setString(1, transacao.getTipo());
+        stmt.setBigDecimal(2, transacao.getValor());
+        stmt.setString(3, transacao.getDescricao());
+        stmt.setString(4, transacao.getCategoria());
+        stmt.setDate(5, Date.valueOf(transacao.getDataTransacao()));
     }
 
     private Transacao mapearTransacao(ResultSet rs) throws SQLException {
