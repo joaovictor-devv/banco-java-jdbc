@@ -29,6 +29,7 @@ public class PerfilFinanceiroService {
         BigDecimal rendaExtraNormalizada = valorOuZero(rendaExtra);
         BigDecimal outrasDespesasNormalizadas = valorOuZero(outrasDespesas);
         BigDecimal saldoNormalizado = valorOuZero(saldoAtual);
+        String objetivoNormalizado = normalizarObjetivo(objetivoPrincipal);
 
         validarCampos(
                 rendaMensal,
@@ -41,7 +42,6 @@ public class PerfilFinanceiroService {
                 gastoAlimentacao,
                 outrasDespesasNormalizadas,
                 valorPlanejadoGuardar,
-                objetivoPrincipal,
                 saldoNormalizado
         );
 
@@ -56,7 +56,7 @@ public class PerfilFinanceiroService {
                 gastoAlimentacao,
                 outrasDespesasNormalizadas,
                 valorPlanejadoGuardar,
-                objetivoPrincipal.trim(),
+                objetivoNormalizado,
                 saldoNormalizado
         );
 
@@ -107,6 +107,9 @@ public class PerfilFinanceiroService {
         BigDecimal saldoNormalizado = saldoAtual != null
                 ? saldoAtual
                 : valorOuZero(perfilExistente.getSaldoAtual());
+        String objetivoNormalizado = objetivoPrincipal == null
+                ? normalizarObjetivo(perfilExistente.getObjetivoPrincipal())
+                : normalizarObjetivo(objetivoPrincipal);
 
         validarCampos(
                 rendaMensal,
@@ -119,7 +122,6 @@ public class PerfilFinanceiroService {
                 gastoAlimentacao,
                 outrasDespesasNormalizadas,
                 valorPlanejadoGuardar,
-                objetivoPrincipal,
                 saldoNormalizado
         );
 
@@ -135,7 +137,7 @@ public class PerfilFinanceiroService {
                 gastoAlimentacao,
                 outrasDespesasNormalizadas,
                 valorPlanejadoGuardar,
-                objetivoPrincipal.trim(),
+                objetivoNormalizado,
                 saldoNormalizado
         );
 
@@ -152,7 +154,6 @@ public class PerfilFinanceiroService {
                                BigDecimal gastoAlimentacao,
                                BigDecimal outrasDespesas,
                                BigDecimal valorPlanejadoGuardar,
-                               String objetivoPrincipal,
                                BigDecimal saldoAtual) {
 
         validarNaoNegativo(rendaMensal, "A renda mensal é obrigatória e não pode ser negativa.");
@@ -166,10 +167,13 @@ public class PerfilFinanceiroService {
         validarNaoNegativo(outrasDespesas, "Outras despesas não podem ser negativas.");
         validarNaoNegativo(valorPlanejadoGuardar, "O valor planejado para guardar é obrigatório e não pode ser negativo.");
         validarNaoNegativo(saldoAtual, "O saldo atual não pode ser negativo.");
+    }
 
+    private String normalizarObjetivo(String objetivoPrincipal) {
         if (objetivoPrincipal == null || objetivoPrincipal.isBlank()) {
-            throw new IllegalArgumentException("O objetivo principal é obrigatório.");
+            return "Organizar finanças";
         }
+        return objetivoPrincipal.trim();
     }
 
     private void validarNaoNegativo(BigDecimal valor, String mensagem) {
