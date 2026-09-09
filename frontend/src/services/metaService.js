@@ -19,3 +19,7 @@ export function buscarMetaPorId(id) {
 export function analisarViabilidadeMeta(id) {
   return api.get(`/metas/${id}/viabilidade`);
 }
+
+export function simularMeta(dados) {
+  return api.post("/analise/simular-meta", dados);
+}
