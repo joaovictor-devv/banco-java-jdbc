@@ -1,111 +1,136 @@
 import { useEffect, useState } from "react";
-import {
-  buscarSugestoes,
-  buscarResumoInteligente,
-  buscarAnaliseGastos,
-  buscarPrevisaoMetas,
-} from "../services/iaService";
+import { analisarIA, perguntarIA } from "../services/iaService";
 
 function Insights() {
-  const [sugestoes, setSugestoes] = useState(null);
-  const [resumo, setResumo] = useState(null);
-  const [analiseGastos, setAnaliseGastos] = useState(null);
-  const [previsaoMetas, setPrevisaoMetas] = useState(null);
+  const [pergunta, setPergunta] = useState("");
+  const [resposta, setResposta] = useState("");
+  const [analise, setAnalise] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [carregandoAnalise, setCarregandoAnalise] = useState(true);
+  const [erro, setErro] = useState("");
+
+  async function carregarAnalise() {
+    setCarregandoAnalise(true);
+    setErro("");
+
+    try {
+      const response = await analisarIA();
+      setAnalise(response.data.resposta || "A IA não retornou uma análise.");
+    } catch (error) {
+      setErro(
+        error.response?.data?.mensagem ||
+          "Não foi possível carregar a análise da IA. Verifique se o backend está ligado e se a OPENAI_API_KEY foi configurada."
+      );
+    } finally {
+      setCarregandoAnalise(false);
+    }
+  }
 
   useEffect(() => {
-    buscarSugestoes().then((response) => setSugestoes(response.data));
-    buscarResumoInteligente().then((response) => setResumo(response.data));
-    buscarAnaliseGastos().then((response) => setAnaliseGastos(response.data));
-    buscarPrevisaoMetas().then((response) => setPrevisaoMetas(response.data));
+    carregarAnalise();
   }, []);
 
-  const cards = [
-    {
-      titulo: sugestoes?.recurso || "Sugestões Inteligentes",
-      mensagem:
-        sugestoes?.mensagem ||
-        "As sugestões financeiras serão geradas futuramente pela IA do FinIA.",
-      icone: "lightbulb",
-    },
-    {
-      titulo: resumo?.recurso || "Resumo Inteligente",
-      mensagem:
-        resumo?.mensagem ||
-        "O resumo inteligente será gerado futuramente pela IA do FinIA.",
-      icone: "auto_awesome",
-    },
-    {
-      titulo: analiseGastos?.recurso || "Análise Inteligente de Gastos",
-      mensagem:
-        analiseGastos?.mensagem ||
-        "A análise inteligente de gastos será realizada futuramente pela IA.",
-      icone: "monitoring",
-    },
-    {
-      titulo: previsaoMetas?.recurso || "Previsão de Metas",
-      mensagem:
-        previsaoMetas?.mensagem ||
-        "A previsão de metas será calculada futuramente pela IA.",
-      icone: "flag",
-    },
-  ];
+  async function enviarPergunta(event) {
+    event.preventDefault();
+
+    if (!pergunta.trim()) return;
+
+    setCarregando(true);
+    setErro("");
+    setResposta("");
+
+    try {
+      const response = await perguntarIA(pergunta.trim());
+      setResposta(response.data.resposta || "A IA não retornou uma resposta.");
+      setPergunta("");
+    } catch (error) {
+      setErro(
+        error.response?.data?.mensagem ||
+          "Não foi possível consultar a IA. Verifique o backend e a chave da OpenAI."
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-8 md:px-12">
-      <section className="mb-10">
-        <h1 className="text-3xl font-bold text-slate-900">
-          Insights Inteligentes
-        </h1>
+      <section className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900">FinIA IA</h1>
         <p className="mt-2 text-lg text-slate-500">
-          Área reservada para recomendações e análises futuras da IA do FinIA.
+          Converse com a IA usando sua situação financeira atual.
         </p>
       </section>
 
-      <section className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-            <span className="material-symbols-outlined">psychology</span>
-          </div>
+      {erro && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {erro}
+        </div>
+      )}
 
+      <section className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white">
+            <span className="material-symbols-outlined">auto_awesome</span>
+          </div>
           <div>
             <h2 className="text-xl font-semibold text-slate-900">
-              Módulo de IA em desenvolvimento
+              Análise financeira atual
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-              Futuramente, esta área irá utilizar os dados financeiros do
-              usuário para identificar padrões, calcular probabilidades,
-              analisar hábitos de consumo e gerar recomendações personalizadas.
+            <p className="text-sm text-slate-500">
+              Gerada considerando os cálculos e dados do FinIA.
             </p>
           </div>
         </div>
+
+        <div className="rounded-xl bg-white p-5 text-sm leading-7 text-slate-700 whitespace-pre-line">
+          {carregandoAnalise
+            ? "Analisando sua situação financeira..."
+            : analise || "Nenhuma análise disponível."}
+        </div>
+
+        <button
+          type="button"
+          onClick={carregarAnalise}
+          disabled={carregandoAnalise}
+          className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+        >
+          Atualizar análise
+        </button>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {cards.map((card) => (
-          <div
-            key={card.titulo}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-5">
+          <h2 className="text-xl font-semibold text-slate-900">
+            Pergunte ao FinIA
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Exemplos: “Posso comprar um celular de R$ 2.000?” ou “Minha meta de R$ 5.000 em 6 meses é viável?”
+          </p>
+        </div>
+
+        <form onSubmit={enviarPergunta} className="flex flex-col gap-3 md:flex-row">
+          <input
+            value={pergunta}
+            onChange={(event) => setPergunta(event.target.value)}
+            placeholder="Digite sua pergunta financeira..."
+            className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+
+          <button
+            type="submit"
+            disabled={carregando || !pergunta.trim()}
+            className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
           >
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-                <span className="material-symbols-outlined text-blue-600">
-                  {card.icone}
-                </span>
-              </div>
+            {carregando ? "Analisando..." : "Perguntar"}
+          </button>
+        </form>
 
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600">
-                IA futura
-              </span>
-            </div>
-
-            <h3 className="text-lg font-semibold text-slate-900">
-              {card.titulo}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              {card.mensagem}
-            </p>
+        {resposta && (
+          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-700 whitespace-pre-line">
+            {resposta}
           </div>
-        ))}
+        )}
       </section>
     </main>
   );
