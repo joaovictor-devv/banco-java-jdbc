@@ -5,9 +5,7 @@ import java.math.BigDecimal;
 public class CapacidadeFinanceira {
 
     private final BigDecimal rendaMensal;
-    private final BigDecimal rendaExtra;
-    private final BigDecimal rendaTotal;
-    private final BigDecimal despesasPlanejadas;
+    private final BigDecimal gastosMensais;
     private final BigDecimal reservaPlanejada;
     private final BigDecimal comprometimentoMensalMetas;
     private final BigDecimal totalCompromissosMensais;
@@ -21,9 +19,7 @@ public class CapacidadeFinanceira {
     private final String mensagem;
 
     public CapacidadeFinanceira(BigDecimal rendaMensal,
-                                BigDecimal rendaExtra,
-                                BigDecimal rendaTotal,
-                                BigDecimal despesasPlanejadas,
+                                BigDecimal gastosMensais,
                                 BigDecimal reservaPlanejada,
                                 BigDecimal comprometimentoMensalMetas,
                                 BigDecimal totalCompromissosMensais,
@@ -36,9 +32,7 @@ public class CapacidadeFinanceira {
                                 String classificacao,
                                 String mensagem) {
         this.rendaMensal = rendaMensal;
-        this.rendaExtra = rendaExtra;
-        this.rendaTotal = rendaTotal;
-        this.despesasPlanejadas = despesasPlanejadas;
+        this.gastosMensais = gastosMensais;
         this.reservaPlanejada = reservaPlanejada;
         this.comprometimentoMensalMetas = comprometimentoMensalMetas;
         this.totalCompromissosMensais = totalCompromissosMensais;
@@ -53,9 +47,7 @@ public class CapacidadeFinanceira {
     }
 
     public BigDecimal getRendaMensal() { return rendaMensal; }
-    public BigDecimal getRendaExtra() { return rendaExtra; }
-    public BigDecimal getRendaTotal() { return rendaTotal; }
-    public BigDecimal getDespesasPlanejadas() { return despesasPlanejadas; }
+    public BigDecimal getGastosMensais() { return gastosMensais; }
     public BigDecimal getReservaPlanejada() { return reservaPlanejada; }
     public BigDecimal getComprometimentoMensalMetas() { return comprometimentoMensalMetas; }
     public BigDecimal getTotalCompromissosMensais() { return totalCompromissosMensais; }
