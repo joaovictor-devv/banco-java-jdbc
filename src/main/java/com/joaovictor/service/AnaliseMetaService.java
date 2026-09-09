@@ -5,10 +5,13 @@ import com.joaovictor.model.Meta;
 import com.joaovictor.model.SituacaoFinanceira;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class AnaliseMetaService {
 
     private static final BigDecimal LIMITE_ATENCAO = new BigDecimal("0.80");
+    private static final BigDecimal LIMITE_CONFORTAVEL = new BigDecimal("0.70");
+    private static final BigDecimal CEM = new BigDecimal("100");
 
     private final MetaService metaService;
     private final SituacaoFinanceiraService situacaoFinanceiraService;
@@ -126,15 +129,65 @@ public class AnaliseMetaService {
                                  boolean viavel,
                                  String classificacao,
                                  String mensagem) {
+
+        BigDecimal percentualMargemComprometida = calcularPercentual(
+                valorMensalNecessario,
+                margemDisponivel
+        );
+
+        Integer prazoMinimoViavel = calcularPrazo(
+                valorRestante,
+                margemDisponivel
+        );
+
+        Integer prazoConfortavel = calcularPrazo(
+                valorRestante,
+                margemDisponivel.compareTo(BigDecimal.ZERO) > 0
+                        ? margemDisponivel.multiply(LIMITE_CONFORTAVEL)
+                        : BigDecimal.ZERO
+        );
+
+        String mensagemFinal = mensagem;
+        if (!viavel && prazoConfortavel != null && prazoConfortavel > 0) {
+            mensagemFinal += " Mantendo a situação atual, um prazo mais confortável seria de aproximadamente "
+                    + prazoConfortavel + " meses.";
+        }
+
         return new AnaliseMeta(
                 valorRestante,
                 valorMensalNecessario,
                 margemLivre,
                 comprometimentoOutrasMetas,
                 margemDisponivel,
+                percentualMargemComprometida,
+                prazoMinimoViavel,
+                prazoConfortavel,
                 viavel,
                 classificacao,
-                mensagem
+                mensagemFinal
         );
+    }
+
+    private BigDecimal calcularPercentual(BigDecimal parte, BigDecimal total) {
+        if (parte == null || total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return parte.multiply(CEM)
+                .divide(total, 2, RoundingMode.HALF_UP);
+    }
+
+    private Integer calcularPrazo(BigDecimal valorRestante, BigDecimal capacidadeMensal) {
+        if (valorRestante == null || valorRestante.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0;
+        }
+
+        if (capacidadeMensal == null || capacidadeMensal.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        return valorRestante
+                .divide(capacidadeMensal, 0, RoundingMode.CEILING)
+                .intValue();
     }
 }
