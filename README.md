@@ -1,167 +1,176 @@
 # FinIA
 
-Ferramenta de gestão financeira pessoal desenvolvida com Java e Spring Boot. O foco do FinIA é ajudar o usuário a entender sua situação atual, avaliar metas, testar decisões antes de tomá-las e receber explicações em linguagem natural.
+Ferramenta de gestão e análise financeira pessoal desenvolvida como TCC. O FinIA combina um motor financeiro determinístico com IA para ajudar o usuário a entender sua situação atual, avaliar metas e testar decisões antes de tomá-las.
 
-## Ideia central
-
-O FinIA separa duas responsabilidades:
+## Princípio do projeto
 
 ```text
 Motor financeiro -> calcula
 FinIA / IA       -> explica
 ```
 
-A IA não decide os valores financeiros e não substitui as regras do backend. Renda, gastos, reserva, metas, capacidade de gasto e projeções são calculados de forma determinística.
+A IA não é responsável pelas contas. Renda, gastos, reserva, metas, capacidade de gasto e projeções são calculados no backend. A IA recebe esses resultados e os explica em linguagem natural.
 
-## Fluxo atual do produto
+O FinIA não é banco, carteira digital, corretora ou sistema de investimentos. A versão final é focada em um único usuário e não exige login nem integração bancária.
+
+## Fluxo do produto
 
 ```text
-Saldo atual
-   +
+Perfil / saldo atual
+        +
 Orçamento mensal
-   +
+        +
 Metas
-   ↓
+        ↓
 Motor financeiro
-   ↓
+        ↓
 Capacidade de gasto e viabilidade
-   ↓
+        ↓
 Simulações futuras
-   ↓
+        ↓
 FinIA explica os resultados
 ```
 
-## Funcionalidades principais
+## Dados principais
 
+O modelo final foi simplificado para usar apenas informações que realmente participam das análises:
+
+- nome do usuário;
 - saldo atual informado manualmente;
-- orçamento rápido;
-- renda mensal e renda extra;
-- gastos mensais estimados;
+- renda mensal;
+- gastos mensais médios;
 - valor planejado para guardar;
-- capacidade de gasto mensal;
-- limite de gasto imediato;
-- classificação da situação financeira;
-- criação, edição e acompanhamento de metas;
-- análise conjunta de todas as metas;
-- prazo mínimo viável e prazo confortável sugerido para metas;
-- simulação de gastos sem alterar o banco;
-- simulação de metas antes do cadastro;
-- projeção financeira de 1 a 60 meses;
-- cenários com mudança de renda, gastos e despesas extraordinárias;
-- projeção da evolução das metas;
-- aportes extras simulados em metas;
-- histórico de transações opcional;
-- explicações usando OpenAI;
-- explicação de uma simulação pela IA apenas quando solicitada.
+- metas financeiras.
 
-A antiga funcionalidade de revisão mensal permanece apenas como código legado de compatibilidade. O fluxo principal do projeto passa a usar `Simulações`.
+Não há renda extra média permanente. Uma entrada excepcional pode ser representada como evento em uma simulação, sem assumir que acontecerá todos os meses.
 
 ## Motor financeiro
 
-A regra principal é:
+Regra central:
 
 ```text
-Renda total
+renda mensal
 - gastos mensais
-- valor planejado para guardar
+- reserva planejada
 - comprometimento mensal das metas
-= margem disponível
+= margem disponível após metas
 ```
 
-A capacidade de gasto imediato ainda considera o saldo atual:
+A capacidade de gasto imediato também considera o dinheiro que existe de fato no saldo:
 
 ```text
-pode gastar agora = menor valor entre saldo atual e capacidade mensal
+pode gastar agora = menor(saldo atual, capacidade mensal)
 ```
 
-Ter dinheiro em conta não significa automaticamente que todo esse valor esteja livre para gastar.
+Classificações do motor incluem:
+
+- `SEM_RENDA`
+- `GASTOS_ACIMA_DA_RENDA`
+- `RESERVA_INVIAVEL`
+- `METAS_ACIMA_DA_CAPACIDADE`
+- `EQUILIBRADA`
+- `APERTADA`
+- `SAUDAVEL`
+
+O limite de 80% usado para sinalizar situação apertada é uma regra heurística do produto, não uma lei financeira universal.
+
+## Perfil
+
+### Criar perfil
+
+`POST /perfil-financeiro`
+
+```json
+{
+  "nome": "João",
+  "saldoAtual": 1200
+}
+```
+
+### Ler perfil
+
+`GET /perfil-financeiro`
+
+### Atualizar perfil
+
+`PUT /perfil-financeiro`
+
+### Atualizar somente o saldo
+
+`PUT /perfil-financeiro/saldo`
+
+```json
+{
+  "saldoAtual": 1500
+}
+```
+
+O saldo pode ser atualizado diretamente. Não é necessário criar transações fictícias para representar dinheiro já existente.
 
 ## Orçamento rápido
 
-O frontend novo não precisa enviar um formulário grande de categorias.
-
-### Ler orçamento
+### Ler
 
 `GET /orcamento`
 
-### Salvar ou substituir orçamento rápido
+### Salvar ou substituir
 
 `PUT /orcamento`
 
 ```json
 {
   "rendaMensal": 2500,
-  "rendaExtra": 300,
-  "gastosMensais": 1400,
-  "valorPlanejadoGuardar": 400
+  "gastosMensais": 1300,
+  "valorPlanejadoGuardar": 300
 }
 ```
 
-O backend mantém compatibilidade com o perfil financeiro antigo, mas concentra o total dos gastos no orçamento rápido.
+O orçamento final possui somente três campos financeiros. O objetivo é permitir que o usuário configure a base das análises rapidamente, sem preencher uma planilha de categorias.
 
-## Saldo atual
-
-### Atualizar apenas o saldo
-
-`PUT /perfil-financeiro/saldo`
-
-```json
-{
-  "saldoAtual": 1200
-}
-```
-
-Não é necessário reenviar todo o perfil para alterar o saldo.
-
-## Capacidade de gastos
+## Análises determinísticas
 
 ### Situação financeira
 
 `GET /analise/situacao`
 
-### Capacidade detalhada
+### Capacidade detalhada de gastos
 
 `GET /analise/capacidade-gastos`
 
-### Simular uma compra
+### Sugestões automáticas do motor
+
+`GET /analise/sugestoes`
+
+### Simular um gasto
 
 `POST /analise/simular-gasto`
 
 ```json
 {
-  "valor": 1500
+  "valor": 500
 }
 ```
 
-A chamada não altera saldo e não cria transação.
+O resultado pode ser `RECOMENDADO`, `ATENCAO`, `NAO_RECOMENDADO` ou `SALDO_INSUFICIENTE`. A operação não altera o saldo real.
 
 ## Metas
+
+Uma meta possui:
+
+- nome;
+- valor alvo;
+- valor que já foi reservado;
+- prazo em meses;
+- prioridade `baixa`, `media` ou `alta`;
+- descrição opcional.
 
 ### Criar
 
 `POST /metas`
 
-### Listar
+Antes de salvar, o backend calcula a viabilidade. Uma meta classificada como `INVIAVEL` não é persistida e a resposta informa o motivo e, quando possível, um prazo mínimo e um prazo mais confortável.
 
-`GET /metas`
-
-### Buscar
-
-`GET /metas/{id}`
-
-### Analisar viabilidade
-
-`GET /metas/{id}/viabilidade`
-
-Além da classificação, a análise pode retornar:
-
-- valor necessário por mês;
-- margem disponível;
-- percentual da margem exigido;
-- prazo mínimo viável;
-- prazo confortável sugerido.
-
-### Simular uma meta antes de cadastrar
+### Simular antes de criar
 
 `POST /analise/simular-meta`
 
@@ -169,84 +178,102 @@ Além da classificação, a análise pode retornar:
 {
   "nome": "Notebook",
   "valorAlvo": 5000,
-  "valorInicial": 500,
+  "valorInicial": 1000,
   "prazoMeses": 10,
   "prioridade": "alta",
   "descricao": "Notebook para estudos"
 }
 ```
 
-### Editar meta
+### Outros endpoints
 
-`PUT /metas/{id}`
-
-### Atualizar somente o progresso
-
-`PATCH /metas/{id}/progresso`
-
-```json
-{
-  "valorAtual": 1800
-}
+```text
+GET    /metas
+GET    /metas/resumo
+GET    /metas/{id}
+GET    /metas/{id}/viabilidade
+PUT    /metas/{id}
+PATCH  /metas/{id}/progresso
+DELETE /metas/{id}
 ```
 
-### Excluir
-
-`DELETE /metas/{id}`
+Quando o valor atual chega ao alvo, a análise passa automaticamente para `CONCLUIDA` e a meta deixa de gerar comprometimento mensal.
 
 ## Simulações futuras
 
-A simulação é totalmente isolada. Ela nunca altera saldo, orçamento ou metas reais.
-
-### Projetar cenário
-
 `POST /simulacoes`
+
+As simulações são temporárias e nunca alteram perfil, saldo, orçamento ou metas reais. O período permitido é de 1 a 60 meses.
+
+O cenário pode partir do orçamento atual ou sobrescrever renda e gastos apenas para a projeção. Também aceita eventos em meses específicos.
+
+Tipos de evento suportados:
+
+- `RENDA_EXTRAORDINARIA`: entrada única naquele mês;
+- `GASTO_EXTRAORDINARIO`: gasto único naquele mês;
+- `ALTERAR_RENDA`: muda a renda mensal daquele mês em diante;
+- `ALTERAR_GASTOS`: muda os gastos mensais daquele mês em diante;
+- `ALTERAR_APORTE_META`: muda o aporte extra mensal geral ou de uma meta específica.
 
 Exemplo:
 
 ```json
 {
-  "nomeCenario": "Compra de celular e projeção de 6 meses",
-  "meses": 6,
-  "rendaMensal": 2500,
-  "rendaExtraMensal": 300,
-  "gastosMensais": 1400,
-  "gastoExtraordinario": 1500,
-  "mesGastoExtraordinario": 1,
+  "nomeCenario": "Cenário de 12 meses",
+  "meses": 12,
   "aporteExtraMetasMensal": 100,
-  "metaPrioritariaId": 1
+  "metaPrioritariaId": 1,
+  "eventos": [
+    {
+      "mes": 2,
+      "tipo": "RENDA_EXTRAORDINARIA",
+      "valor": 500
+    },
+    {
+      "mes": 4,
+      "tipo": "GASTO_EXTRAORDINARIO",
+      "valor": 1200
+    },
+    {
+      "mes": 7,
+      "tipo": "ALTERAR_RENDA",
+      "valor": 2100
+    },
+    {
+      "mes": 9,
+      "tipo": "ALTERAR_APORTE_META",
+      "valor": 200,
+      "metaId": 1
+    }
+  ]
 }
 ```
 
-Todos os campos financeiros do cenário são opcionais. Quando um valor não é enviado, o motor usa a situação financeira atual como ponto de partida.
+A resposta contém, entre outros dados:
 
-A resposta contém:
-
-- saldo inicial;
-- saldo final projetado;
+- saldo inicial e saldo final projetado;
 - variação do saldo;
 - classificação final;
 - evolução mês a mês;
-- margem mensal de cada período;
-- despesas extraordinárias;
+- renda, gastos e margem de cada mês;
+- eventos aplicados em cada período;
 - total reservado;
 - total destinado às metas;
+- rendas e gastos extraordinários;
 - progresso atual e projetado de cada meta;
-- mês de conclusão quando uma meta for concluída dentro da simulação.
+- mês previsto de conclusão quando ocorrer dentro da simulação.
 
-O período aceito é de 1 a 60 meses.
+## Inteligência Artificial
 
-## IA
+Dashboard, orçamento, metas, capacidade de gasto e simulações funcionam sem chamada paga de IA.
 
-A integração com OpenAI é chamada apenas quando necessária. Dashboard, metas, capacidade de gasto e simulações funcionam sem gastar créditos de IA.
-
-### Perguntar
+### Perguntar à FinIA
 
 `POST /ia/perguntar`
 
 ```json
 {
-  "pergunta": "Posso comprar um celular de R$ 1.500?"
+  "pergunta": "Por que minha capacidade de gasto está baixa?"
 }
 ```
 
@@ -258,37 +285,46 @@ A integração com OpenAI é chamada apenas quando necessária. Dashboard, metas
 
 `POST /ia/explicar-simulacao`
 
-O corpo é o mesmo de `POST /simulacoes`. Primeiro o motor calcula todo o cenário; somente depois a IA recebe os resultados e os explica.
+O corpo é o mesmo usado em `POST /simulacoes`. Primeiro o motor calcula todo o cenário. Depois a IA recebe os resultados determinísticos e apenas os interpreta.
 
-## OpenAI
-
-A chave nunca deve ser salva no código.
-
-Variáveis:
+A chave da OpenAI nunca deve ser salva no repositório. Use:
 
 ```text
 OPENAI_API_KEY
 OPENAI_MODEL
 ```
 
-O modelo pode ser trocado por variável de ambiente sem alteração no código.
-
 ## Banco de dados
 
-O projeto usa MySQL. As simulações futuras não precisam de novas tabelas porque são temporárias e não são persistidas.
+Banco: MySQL.
 
-O saldo atual já usa a coluna `saldo_atual` em `perfil_financeiro`.
+Para uma instalação nova, use:
+
+```text
+database/schema.sql
+```
+
+Para migrar a estrutura antiga para o modelo simplificado final, existe:
+
+```text
+database/migration_v3_final.sql
+```
+
+A migração final remove a estrutura antiga de renda extra, categorias detalhadas, transações e revisão mensal. Ela deve ser executada apenas quando a aplicação local estiver pronta para adotar definitivamente o novo modelo.
+
+Simulações não são persistidas e portanto não exigem tabelas próprias.
 
 ## Backend oficial
 
-Use o projeto da raiz:
+O projeto Java oficial é o da raiz:
 
 ```text
 pom.xml
 src/main/java/...
+src/test/java/...
 ```
 
-A pasta `backend/` é legado e não deve ser executada.
+A pasta `backend/` é uma cópia legada antiga e não deve ser executada. Ela será removida da versão final do repositório.
 
 ## Executar
 
@@ -302,6 +338,27 @@ Servidor padrão:
 http://localhost:8080
 ```
 
+## Testes
+
+Executar todos os testes e gerar o pacote:
+
+```bash
+mvn verify
+```
+
+Os testes automatizados cobrem regras centrais do motor financeiro, comprometimento das metas, análise de gastos, viabilidade de metas e validações dos cenários de simulação.
+
+## CI
+
+A branch `dev/finia-desenvolvimento` possui GitHub Actions. A cada push, o CI executa:
+
+```text
+Backend: mvn verify
+Frontend: npm ci + lint + build
+```
+
+Assim, mudanças que quebram compilação ou os testes financeiros são detectadas automaticamente.
+
 ## Tecnologias
 
 - Java 21
@@ -310,14 +367,25 @@ http://localhost:8080
 - MySQL
 - JDBC
 - BigDecimal
+- JUnit 5
+- AssertJ
 - OpenAI Java SDK
 - OpenAI Responses API
 - GitHub Actions
 
-## Validação automática
+## Escopo final
 
-A branch `dev/finia-desenvolvimento` possui CI automático para compilar o backend e validar o frontend existente no repositório.
+A versão final do TCC é centrada em seis áreas de interface:
 
-## Regra de segurança do projeto
+```text
+Dashboard
+Meu Orçamento
+Metas
+Simulações
+FinIA
+Perfil
+```
 
-Nenhuma chave real da OpenAI deve ser commitada. Use variáveis de ambiente.
+O objetivo do produto pode ser resumido como:
+
+> Você informa o básico. O FinIA calcula, simula e explica.
