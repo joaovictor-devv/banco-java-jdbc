@@ -144,6 +144,15 @@ public class PerfilFinanceiroService {
         repository.atualizar(id, perfilAtualizado);
     }
 
+    public PerfilFinanceiro atualizarSaldoAtual(BigDecimal saldoAtual) {
+        validarNaoNegativo(saldoAtual, "O saldo atual é obrigatório e não pode ser negativo.");
+
+        PerfilFinanceiro perfil = buscarUltimoPerfil();
+        repository.atualizarSaldo(perfil.getId(), saldoAtual);
+        perfil.setSaldoAtual(saldoAtual);
+        return perfil;
+    }
+
     private void validarCampos(BigDecimal rendaMensal,
                                BigDecimal rendaExtra,
                                BigDecimal gastoMoradia,
