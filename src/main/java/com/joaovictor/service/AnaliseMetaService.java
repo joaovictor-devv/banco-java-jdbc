@@ -5,16 +5,19 @@ import com.joaovictor.model.Meta;
 import com.joaovictor.model.SituacaoFinanceira;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 public class AnaliseMetaService {
 
+    private static final BigDecimal LIMITE_ATENCAO = new BigDecimal("0.80");
+
     private final MetaService metaService;
     private final SituacaoFinanceiraService situacaoFinanceiraService;
+    private final CompromissoMetasService compromissoMetasService;
 
     public AnaliseMetaService() {
         this.metaService = new MetaService();
         this.situacaoFinanceiraService = new SituacaoFinanceiraService();
+        this.compromissoMetasService = new CompromissoMetasService();
     }
 
     public AnaliseMeta analisar(long id) {
@@ -22,35 +25,116 @@ public class AnaliseMetaService {
     }
 
     public AnaliseMeta analisar(Meta meta) {
+        if (meta == null) {
+            throw new IllegalArgumentException("A meta é obrigatória para análise.");
+        }
+
         SituacaoFinanceira situacao = situacaoFinanceiraService.analisar();
 
         BigDecimal valorRestante = meta.getValorAlvo().subtract(meta.getValorInicial());
-        BigDecimal valorMensalNecessario = valorRestante
-                .divide(BigDecimal.valueOf(meta.getPrazoMeses()), 2, RoundingMode.CEILING);
+        BigDecimal valorMensalNecessario = compromissoMetasService.calcularValorMensal(meta);
         BigDecimal margemLivre = situacao.getMargemLivre();
+        Long idParaExcluir = meta.getId() > 0 ? meta.getId() : null;
+        BigDecimal comprometimentoOutrasMetas =
+                compromissoMetasService.calcularComprometimentoMensalExcluindo(idParaExcluir);
+        BigDecimal margemDisponivel = margemLivre.subtract(comprometimentoOutrasMetas);
 
         if (valorRestante.compareTo(BigDecimal.ZERO) <= 0) {
-            return new AnaliseMeta(BigDecimal.ZERO, BigDecimal.ZERO, margemLivre, true,
-                    "CONCLUIDA", "Esta meta já atingiu o valor alvo.");
+            return resposta(
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO,
+                    margemLivre,
+                    comprometimentoOutrasMetas,
+                    margemDisponivel,
+                    true,
+                    "CONCLUIDA",
+                    "Esta meta já atingiu o valor alvo."
+            );
         }
 
         if (margemLivre.compareTo(BigDecimal.ZERO) <= 0) {
-            return new AnaliseMeta(valorRestante, valorMensalNecessario, margemLivre, false,
-                    "INVIAVEL", "A meta não é viável no momento porque não há margem livre disponível para guardar mensalmente.");
+            return resposta(
+                    valorRestante,
+                    valorMensalNecessario,
+                    margemLivre,
+                    comprometimentoOutrasMetas,
+                    margemDisponivel,
+                    false,
+                    "INVIAVEL",
+                    "A meta não é viável no momento porque o orçamento não possui margem livre mensal."
+            );
         }
 
-        if (valorMensalNecessario.compareTo(margemLivre) > 0) {
-            return new AnaliseMeta(valorRestante, valorMensalNecessario, margemLivre, false,
-                    "INVIAVEL", "Atenção: para atingir esta meta no prazo informado, seria necessário guardar R$ "
-                    + valorMensalNecessario + " por mês, mas sua margem livre atual é de R$ " + margemLivre + ".");
+        if (margemDisponivel.compareTo(BigDecimal.ZERO) <= 0) {
+            return resposta(
+                    valorRestante,
+                    valorMensalNecessario,
+                    margemLivre,
+                    comprometimentoOutrasMetas,
+                    margemDisponivel,
+                    false,
+                    "INVIAVEL",
+                    "As outras metas já comprometem toda a sua margem livre mensal."
+            );
         }
 
-        if (valorMensalNecessario.compareTo(margemLivre.multiply(new BigDecimal("0.8"))) > 0) {
-            return new AnaliseMeta(valorRestante, valorMensalNecessario, margemLivre, true,
-                    "VIAVEL_COM_ATENCAO", "A meta é viável, mas exige uma parcela alta da sua margem livre mensal.");
+        if (valorMensalNecessario.compareTo(margemDisponivel) > 0) {
+            return resposta(
+                    valorRestante,
+                    valorMensalNecessario,
+                    margemLivre,
+                    comprometimentoOutrasMetas,
+                    margemDisponivel,
+                    false,
+                    "INVIAVEL",
+                    "Para atingir esta meta no prazo, seriam necessários R$ "
+                            + valorMensalNecessario + " por mês. Depois das outras metas, restam R$ "
+                            + margemDisponivel + " por mês."
+            );
         }
 
-        return new AnaliseMeta(valorRestante, valorMensalNecessario, margemLivre, true,
-                "VIAVEL", "A meta é viável considerando sua situação financeira atual.");
+        if (valorMensalNecessario.compareTo(margemDisponivel.multiply(LIMITE_ATENCAO)) > 0) {
+            return resposta(
+                    valorRestante,
+                    valorMensalNecessario,
+                    margemLivre,
+                    comprometimentoOutrasMetas,
+                    margemDisponivel,
+                    true,
+                    "VIAVEL_COM_ATENCAO",
+                    "A meta é viável, mas consumirá mais de 80% da margem que sobra após considerar as outras metas."
+            );
+        }
+
+        return resposta(
+                valorRestante,
+                valorMensalNecessario,
+                margemLivre,
+                comprometimentoOutrasMetas,
+                margemDisponivel,
+                true,
+                "VIAVEL",
+                "A meta é viável considerando o orçamento atual e as outras metas cadastradas."
+        );
+    }
+
+    private AnaliseMeta resposta(BigDecimal valorRestante,
+                                 BigDecimal valorMensalNecessario,
+                                 BigDecimal margemLivre,
+                                 BigDecimal comprometimentoOutrasMetas,
+                                 BigDecimal margemDisponivel,
+                                 boolean viavel,
+                                 String classificacao,
+                                 String mensagem) {
+        return new AnaliseMeta(
+                valorRestante,
+                valorMensalNecessario,
+                margemLivre,
+                comprometimentoOutrasMetas,
+                margemDisponivel,
+                viavel,
+                classificacao,
+                mensagem
+        );
     }
 }
