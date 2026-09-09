@@ -13,20 +13,18 @@ public class SugestaoFinanceiraService {
 
     private final AnaliseFinanceiraService analiseFinanceiraService;
     private final SituacaoFinanceiraService situacaoFinanceiraService;
-    private final CompromissoMetasService compromissoMetasService;
 
     public SugestaoFinanceiraService() {
         this.analiseFinanceiraService = new AnaliseFinanceiraService();
         this.situacaoFinanceiraService = new SituacaoFinanceiraService();
-        this.compromissoMetasService = new CompromissoMetasService();
     }
 
     public List<String> gerarSugestoesDoMesAtual() {
         ResumoFinanceiro resumo = analiseFinanceiraService.gerarResumoDoMesAtual();
         BigDecimal diferencaMesAnterior = analiseFinanceiraService.compararGastosComMesAnterior();
         SituacaoFinanceira situacao = situacaoFinanceiraService.analisar();
-        BigDecimal comprometimentoMetas = compromissoMetasService.calcularComprometimentoMensalTotal();
-        BigDecimal margemAposMetas = situacao.getMargemLivre().subtract(comprometimentoMetas);
+        BigDecimal comprometimentoMetas = situacao.getComprometimentoMensalMetas();
+        BigDecimal margemAposMetas = situacao.getMargemDisponivelAposMetas();
 
         List<String> sugestoes = new ArrayList<>();
 
