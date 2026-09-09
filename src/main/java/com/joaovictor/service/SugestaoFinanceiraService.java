@@ -1,7 +1,6 @@
 package com.joaovictor.service;
 
-import com.joaovictor.model.ResumoFinanceiro;
-import com.joaovictor.model.SituacaoFinanceira;
+import com.joaovictor.model.CapacidadeFinanceira;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -9,65 +8,35 @@ import java.util.List;
 
 public class SugestaoFinanceiraService {
 
-    private static final BigDecimal LIMITE_ATENCAO = new BigDecimal("0.80");
-
-    private final AnaliseFinanceiraService analiseFinanceiraService;
-    private final SituacaoFinanceiraService situacaoFinanceiraService;
+    private final MotorFinanceiroService motorFinanceiroService;
 
     public SugestaoFinanceiraService() {
-        this.analiseFinanceiraService = new AnaliseFinanceiraService();
-        this.situacaoFinanceiraService = new SituacaoFinanceiraService();
+        this.motorFinanceiroService = new MotorFinanceiroService();
     }
 
     public List<String> gerarSugestoesDoMesAtual() {
-        ResumoFinanceiro resumo = analiseFinanceiraService.gerarResumoDoMesAtual();
-        BigDecimal diferencaMesAnterior = analiseFinanceiraService.compararGastosComMesAnterior();
-        SituacaoFinanceira situacao = situacaoFinanceiraService.analisar();
-        BigDecimal comprometimentoMetas = situacao.getComprometimentoMensalMetas();
-        BigDecimal margemAposMetas = situacao.getMargemDisponivelAposMetas();
-
+        CapacidadeFinanceira capacidade = motorFinanceiroService.calcularCapacidade();
         List<String> sugestoes = new ArrayList<>();
 
-        if (situacao.getDespesasPlanejadas().compareTo(situacao.getRendaTotal()) > 0) {
-            sugestoes.add("Suas despesas planejadas estão acima da renda total. Revise o orçamento antes de assumir novos compromissos.");
+        switch (capacidade.getClassificacao()) {
+            case "SEM_RENDA" -> sugestoes.add("Cadastre uma renda mensal para que o FinIA consiga calcular sua capacidade financeira.");
+            case "GASTOS_ACIMA_DA_RENDA" -> sugestoes.add("Seus gastos mensais estão acima da renda. Reduza gastos antes de assumir novas metas ou compras.");
+            case "RESERVA_INVIAVEL" -> sugestoes.add("O valor que você deseja guardar, somado aos gastos, ultrapassa sua renda mensal.");
+            case "METAS_ACIMA_DA_CAPACIDADE" -> sugestoes.add("As metas atuais exigem mais do que a margem disponível. Revise prazos ou prioridades.");
+            case "EQUILIBRADA" -> sugestoes.add("Toda a sua renda está comprometida. Evite novos gastos até criar margem no orçamento.");
+            case "APERTADA" -> sugestoes.add("Seu orçamento ainda é possível, mas mais de 80% da renda está comprometida.");
+            case "DEFICIT" -> sugestoes.add("O saldo atual está negativo. Priorize recuperar o saldo antes de novos gastos.");
+            default -> sugestoes.add("Sua situação está saudável considerando gastos, reserva e metas atuais.");
         }
 
-        if (situacao.getMargemLivre().compareTo(BigDecimal.ZERO) < 0) {
-            sugestoes.add("Sua margem livre está negativa. Evite assumir novas despesas ou metas até reorganizar o orçamento.");
-        } else if (situacao.getMargemLivre().compareTo(BigDecimal.ZERO) == 0) {
-            sugestoes.add("Seu orçamento está totalmente comprometido. Tenha cautela antes de criar novas metas ou gastos.");
+        if (capacidade.getComprometimentoMensalMetas().compareTo(BigDecimal.ZERO) > 0) {
+            sugestoes.add("Suas metas exigem R$ " + capacidade.getComprometimentoMensalMetas()
+                    + " por mês e deixam R$ " + capacidade.getMargemAposMetas() + " de margem mensal.");
         }
 
-        if (comprometimentoMetas.compareTo(BigDecimal.ZERO) > 0) {
-            if (comprometimentoMetas.compareTo(situacao.getMargemLivre()) > 0) {
-                sugestoes.add("Suas metas exigem juntas R$ " + comprometimentoMetas
-                        + " por mês e ultrapassam a margem livre atual de R$ " + situacao.getMargemLivre() + ".");
-            } else if (situacao.getMargemLivre().compareTo(BigDecimal.ZERO) > 0
-                    && comprometimentoMetas.compareTo(situacao.getMargemLivre().multiply(LIMITE_ATENCAO)) > 0) {
-                sugestoes.add("Suas metas consomem mais de 80% da margem livre mensal. O plano é possível, mas está apertado.");
-            }
-        }
-
-        if (margemAposMetas.compareTo(BigDecimal.ZERO) > 0) {
-            sugestoes.add("Depois das metas, sua margem disponível estimada é de R$ " + margemAposMetas + " por mês.");
-        }
-
-        if (resumo.getCategoriaMaiorGasto() != null
-                && !resumo.getCategoriaMaiorGasto().equalsIgnoreCase("Sem dados")
-                && resumo.getValorMaiorGasto().compareTo(BigDecimal.ZERO) > 0) {
-            sugestoes.add("No histórico registrado, a categoria com maior gasto é '" + resumo.getCategoriaMaiorGasto()
-                    + "', com R$ " + resumo.getValorMaiorGasto() + ".");
-        }
-
-        if (diferencaMesAnterior.compareTo(BigDecimal.ZERO) > 0) {
-            sugestoes.add("No histórico de transações, você gastou R$ " + diferencaMesAnterior + " a mais que no mês anterior.");
-        } else if (diferencaMesAnterior.compareTo(BigDecimal.ZERO) < 0) {
-            sugestoes.add("No histórico de transações, seus gastos caíram R$ "
-                    + diferencaMesAnterior.abs() + " em relação ao mês anterior.");
-        }
-
-        if (sugestoes.isEmpty()) {
-            sugestoes.add("Sua situação financeira não apresenta alertas no momento.");
+        if (capacidade.getCapacidadeGastoImediato().compareTo(BigDecimal.ZERO) > 0) {
+            sugestoes.add("Considerando também o saldo atual, o limite de gasto imediato recomendado é de R$ "
+                    + capacidade.getCapacidadeGastoImediato() + ".");
         }
 
         return sugestoes;
