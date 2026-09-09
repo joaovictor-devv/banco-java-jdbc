@@ -37,6 +37,52 @@ public class MetaService {
         return meta;
     }
 
+    public Meta atualizarMeta(long id,
+                              BigDecimal valorAlvo,
+                              String nome,
+                              Integer prazoMeses,
+                              BigDecimal valorInicial,
+                              String prioridade,
+                              String descricao) {
+        buscarPorId(id);
+        validarMeta(nome, valorAlvo, prazoMeses, valorInicial, prioridade);
+
+        Meta meta = new Meta(
+                id,
+                nome.trim(),
+                valorAlvo,
+                prazoMeses,
+                valorInicial,
+                prioridade.trim(),
+                normalizarDescricao(descricao)
+        );
+
+        if (!repository.atualizar(id, meta)) {
+            throw new IllegalArgumentException("Meta não encontrada para atualização.");
+        }
+
+        return meta;
+    }
+
+    public Meta atualizarProgresso(long id, BigDecimal valorAtual) {
+        Meta meta = buscarPorId(id);
+
+        if (valorAtual == null || valorAtual.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("O valor atual da meta não pode ser negativo.");
+        }
+
+        if (valorAtual.compareTo(meta.getValorAlvo()) > 0) {
+            throw new IllegalArgumentException("O valor atual não pode ser maior que o valor alvo da meta.");
+        }
+
+        if (!repository.atualizarValorInicial(id, valorAtual)) {
+            throw new IllegalArgumentException("Meta não encontrada para atualização do progresso.");
+        }
+
+        meta.setValorInicial(valorAtual);
+        return meta;
+    }
+
     public void validarMeta(String nome,
                             BigDecimal valorAlvo,
                             Integer prazoMeses,
