@@ -1,347 +1,263 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../services/api";
-import { buscarPerfilFinanceiro } from "../services/perfilFinanceiroService";
-import {
-  buscarSaudeFinanceira,
-  buscarResumoInteligente,
-  buscarAnaliseGastos,
-} from "../services/iaService";
 
 function Dashboard() {
+  const [situacao, setSituacao] = useState(null);
+  const [sugestoes, setSugestoes] = useState([]);
   const [resumo, setResumo] = useState(null);
-  const [perfilFinanceiro, setPerfilFinanceiro] = useState(null);
-  const [saudeIA, setSaudeIA] = useState(null);
-  const [resumoIA, setResumoIA] = useState(null);
-  const [analiseGastosIA, setAnaliseGastosIA] = useState(null);
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/analise/resumo")
-      .then((response) => {
-        setResumo(response.data);
-      })
-      .catch((error) => {
-        console.error("Erro ao buscar resumo financeiro:", error);
-      });
+    async function carregar() {
+      setCarregando(true);
+      setErro("");
 
-    buscarPerfilFinanceiro()
-      .then((response) => {
-        setPerfilFinanceiro(response.data);
-      })
-      .catch((error) => {
-        console.error("Erro ao buscar perfil financeiro:", error);
-      });
+      try {
+        const [situacaoResponse, sugestoesResponse, resumoResponse] =
+          await Promise.all([
+            api.get("/analise/situacao"),
+            api.get("/analise/sugestoes"),
+            api.get("/analise/resumo"),
+          ]);
 
-    buscarSaudeFinanceira()
-      .then((response) => {
-        setSaudeIA(response.data);
-      })
-      .catch((error) => {
-        console.error("Erro ao buscar saúde financeira IA:", error);
-      });
+        setSituacao(situacaoResponse.data);
+        setSugestoes(sugestoesResponse.data || []);
+        setResumo(resumoResponse.data);
+      } catch (error) {
+        setErro(
+          error.response?.data?.mensagem ||
+            "Não foi possível carregar o resumo financeiro. Cadastre seu planejamento e confira o backend."
+        );
+      } finally {
+        setCarregando(false);
+      }
+    }
 
-    buscarResumoInteligente()
-      .then((response) => {
-        setResumoIA(response.data);
-      })
-      .catch((error) => {
-        console.error("Erro ao buscar resumo inteligente IA:", error);
-      });
-
-    buscarAnaliseGastos()
-      .then((response) => {
-        setAnaliseGastosIA(response.data);
-      })
-      .catch((error) => {
-        console.error("Erro ao buscar análise de gastos IA:", error);
-      });
+    carregar();
   }, []);
 
-  const formatarMoeda = (valor) => {
-    return Number(valor || 0).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-  };
-
-  const calcularReceitaTotal = () => {
-    if (!perfilFinanceiro) {
-      return resumo?.totalEntradas || 0;
-    }
-
+  if (carregando) {
     return (
-      Number(perfilFinanceiro.rendaMensal || 0) +
-      Number(perfilFinanceiro.rendaExtra || 0)
+      <main className="min-h-screen bg-slate-50 px-6 py-8 md:px-12">
+        <p className="text-slate-500">Carregando situação financeira...</p>
+      </main>
     );
-  };
-
-  const calcularDespesasPrevistas = () => {
-    if (!perfilFinanceiro) {
-      return resumo?.totalSaidas || 0;
-    }
-
-    return (
-      Number(perfilFinanceiro.gastoMoradia || 0) +
-      Number(perfilFinanceiro.gastoAgua || 0) +
-      Number(perfilFinanceiro.gastoEnergia || 0) +
-      Number(perfilFinanceiro.gastoInternet || 0) +
-      Number(perfilFinanceiro.gastoTransporte || 0) +
-      Number(perfilFinanceiro.gastoAlimentacao || 0) +
-      Number(perfilFinanceiro.outrasDespesas || 0)
-    );
-  };
-
-  const receitaTotal = calcularReceitaTotal();
-  const despesasPrevistas = calcularDespesasPrevistas();
-  const saldoPlanejado = receitaTotal - despesasPrevistas;
-
-  const categoriaMaiorGasto = resumo?.categoriaMaiorGasto || "Sem dados";
-  const objetivoPrincipal =
-    perfilFinanceiro?.objetivoPrincipal || "Nenhum objetivo informado";
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-8 md:px-12">
-      <section className="mb-10">
-        <h1 className="text-3xl font-bold text-slate-900">
-          Olá, usuário 👋
-        </h1>
-
-        <p className="mt-2 text-lg text-slate-500">
-          Veja um resumo do seu planejamento financeiro atual.
-        </p>
-      </section>
-
-      <section className="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <CardResumo
-          titulo="Receita total"
-          icone="payments"
-          valor={formatarMoeda(receitaTotal)}
-          descricao="Renda mensal somada com renda extra."
-          corIcone="text-emerald-500"
-          corValor="text-slate-900"
-        />
-
-        <CardResumo
-          titulo="Despesas previstas"
-          icone="shopping_cart"
-          valor={formatarMoeda(despesasPrevistas)}
-          descricao="Soma dos gastos cadastrados no planejamento."
-          corIcone="text-red-500"
-          corValor="text-slate-900"
-        />
-
-        <CardResumo
-          titulo="Saldo planejado"
-          icone="account_balance_wallet"
-          valor={formatarMoeda(saldoPlanejado)}
-          descricao="Receita total menos despesas previstas."
-          corIcone="text-blue-600"
-          corValor={saldoPlanejado >= 0 ? "text-blue-600" : "text-red-500"}
-        />
-
-        <div className="rounded-2xl bg-blue-600 p-6 text-white shadow-lg transition hover:-translate-y-1">
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm font-medium opacity-80">
-              Saúde Financeira
-            </span>
-
-            <span className="material-symbols-outlined">stars</span>
-          </div>
-
-          <p className="text-xl font-bold">
-            {saudeIA?.status || "IA FUTURA"}
-          </p>
-
-          <p className="mt-2 text-sm leading-relaxed opacity-90">
-            {saudeIA?.mensagem ||
-              "A saúde financeira será calculada futuramente pela IA do FinIA."}
-          </p>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Resumo Inteligente
-            </h2>
-
-            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600">
-              IA futura
-            </span>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100">
-                <span className="material-symbols-outlined text-blue-600">
-                  auto_awesome
-                </span>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-slate-900">
-                  {resumoIA?.recurso || "Resumo Inteligente"}
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {resumoIA?.mensagem ||
-                    "O resumo inteligente será gerado futuramente pela IA com base no histórico financeiro do usuário."}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <span className="material-symbols-outlined text-emerald-600">
-                  flag
-                </span>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-slate-900">
-                  Objetivo principal
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {objetivoPrincipal}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100">
-                <span className="material-symbols-outlined text-amber-600">
-                  warning
-                </span>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-slate-900">
-                  Maior categoria de gasto
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Atualmente, a categoria com maior gasto registrada pelo
-                  sistema é <strong>{categoriaMaiorGasto}</strong>. A
-                  interpretação desse comportamento será feita futuramente pela
-                  IA do FinIA.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 rounded-2xl border-l-4 border-blue-600 bg-white p-6 shadow-sm">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <span className="material-symbols-outlined text-emerald-600">
-                  psychology
-                </span>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-slate-900">
-                  Inteligência Financeira em desenvolvimento
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  No futuro, a IA do FinIA irá analisar renda, gastos, metas,
-                  histórico e revisões mensais para gerar recomendações
-                  personalizadas ao usuário.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <section className="mb-10 flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-slate-900">
-              Análise de Gastos
-            </h2>
+          <h1 className="text-3xl font-bold text-slate-900">Visão Geral</h1>
+          <p className="mt-2 text-lg text-slate-500">
+            Resumo calculado pelo motor financeiro do FinIA.
+          </p>
+        </div>
+        <Link
+          to="/insights"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800"
+        >
+          <span className="material-symbols-outlined">psychology</span>
+          Conversar com a FinIA
+        </Link>
+      </section>
 
-            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600">
-              IA futura
-            </span>
-          </div>
+      {erro && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {erro}
+        </div>
+      )}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mx-auto my-6 flex h-48 w-48 items-center justify-center rounded-full border-[18px] border-blue-600">
-              <div className="text-center">
-                <p className="text-sm text-slate-500">Despesas</p>
+      {!situacao ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h2 className="text-xl font-semibold text-slate-900">
+            Planejamento necessário
+          </h2>
+          <p className="mt-2 text-slate-500">
+            Cadastre suas informações financeiras para liberar as análises.
+          </p>
+          <Link
+            to="/planejamento"
+            className="mt-5 inline-flex rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white"
+          >
+            Cadastrar planejamento
+          </Link>
+        </section>
+      ) : (
+        <>
+          <section className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <Card
+              titulo="Saldo atual"
+              valor={formatarMoeda(situacao.saldoAtual)}
+              descricao="Dinheiro disponível informado no perfil."
+              destaque
+            />
+            <Card
+              titulo="Renda total"
+              valor={formatarMoeda(situacao.rendaTotal)}
+              descricao="Renda mensal + renda extra."
+            />
+            <Card
+              titulo="Despesas planejadas"
+              valor={formatarMoeda(situacao.despesasPlanejadas)}
+              descricao="Gastos previstos no planejamento."
+            />
+            <Card
+              titulo="Disponível após metas"
+              valor={formatarMoeda(situacao.margemDisponivelAposMetas)}
+              descricao="Margem após reserva planejada e todas as metas."
+              negativo={Number(situacao.margemDisponivelAposMetas) < 0}
+            />
+          </section>
 
-                <p className="text-xl font-bold text-slate-900">
-                  {formatarMoeda(despesasPrevistas)}
-                </p>
+          <section className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-slate-500">Classificação financeira</p>
+                  <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                    {formatarClassificacao(situacao.classificacao)}
+                  </h2>
+                </div>
+                <span className={badgeClass(situacao.classificacao)}>
+                  {situacao.classificacao}
+                </span>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Info
+                  label="Reserva planejada"
+                  value={formatarMoeda(situacao.valorPlanejadoGuardar)}
+                />
+                <Info
+                  label="Metas por mês"
+                  value={formatarMoeda(situacao.comprometimentoMensalMetas)}
+                />
+                <Info
+                  label="Margem antes das metas"
+                  value={formatarMoeda(situacao.margemLivre)}
+                />
               </div>
             </div>
 
-            <div className="mb-5 rounded-xl bg-slate-50 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">
-                {analiseGastosIA?.recurso || "Análise Inteligente de Gastos"}
-              </h3>
-
-              <p className="mt-1 text-sm text-slate-500">
-                {analiseGastosIA?.mensagem ||
-                  "A análise inteligente dos gastos será realizada futuramente pela IA do FinIA."}
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Histórico opcional do mês
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                As transações servem como histórico, mas não são obrigatórias para informar seu saldo atual.
               </p>
+              <div className="mt-5 space-y-3 text-sm">
+                <Linha label="Entradas" value={formatarMoeda(resumo?.totalEntradas)} />
+                <Linha label="Saídas" value={formatarMoeda(resumo?.totalSaidas)} />
+                <Linha label="Categoria principal" value={resumo?.categoriaMaiorGasto || "Sem dados"} />
+              </div>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Recomendações do motor financeiro
+              </h2>
+              <div className="mt-5 space-y-3">
+                {sugestoes.length ? (
+                  sugestoes.map((sugestao, index) => (
+                    <div
+                      key={`${index}-${sugestao}`}
+                      className="rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-600"
+                    >
+                      {sugestao}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">Nenhuma recomendação no momento.</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <LinhaResumo
-                label="Categoria principal"
-                valor={categoriaMaiorGasto}
-              />
-
-              <LinhaResumo
-                label="Receita total"
-                valor={formatarMoeda(receitaTotal)}
-                cor="text-emerald-600"
-              />
-
-              <LinhaResumo
-                label="Despesas"
-                valor={formatarMoeda(despesasPrevistas)}
-                cor="text-red-500"
-              />
-
-              <LinhaResumo
-                label="Saldo planejado"
-                valor={formatarMoeda(saldoPlanejado)}
-                cor={saldoPlanejado >= 0 ? "text-blue-600" : "text-red-500"}
-              />
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-900">Próximos passos</h2>
+              <div className="mt-5 grid gap-3">
+                <Atalho to="/perfil" titulo="Atualizar saldo" descricao="Informe quanto você possui agora." />
+                <Atalho to="/metas" titulo="Revisar metas" descricao="Veja a viabilidade conjunta dos objetivos." />
+                <Atalho to="/revisao-mensal" titulo="Revisão mensal" descricao="Adicione contexto sobre acontecimentos do mês." />
+                <Atalho to="/insights" titulo="Perguntar à FinIA" descricao="Receba uma interpretação em linguagem natural." />
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
     </main>
   );
 }
 
-function CardResumo({ titulo, icone, valor, descricao, corIcone, corValor }) {
+function Card({ titulo, valor, descricao, destaque = false, negativo = false }) {
+  const cor = negativo ? "text-red-600" : destaque ? "text-blue-600" : "text-slate-900";
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1">
-      <div className="mb-4 flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-500">{titulo}</span>
-
-        <span className={`material-symbols-outlined ${corIcone}`}>
-          {icone}
-        </span>
-      </div>
-
-      <p className={`text-2xl font-bold ${corValor}`}>{valor}</p>
-
-      <p className="mt-2 text-sm text-slate-500">{descricao}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <p className="text-sm font-medium text-slate-500">{titulo}</p>
+      <p className={`mt-3 text-2xl font-bold ${cor}`}>{valor}</p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-500">{descricao}</p>
     </div>
   );
 }
 
-function LinhaResumo({ label, valor, cor = "text-slate-900" }) {
+function Info({ label, value }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-slate-600">{label}</span>
-
-      <span className={`font-semibold ${cor}`}>{valor}</span>
+    <div className="rounded-xl bg-slate-50 p-4">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="mt-1 font-semibold text-slate-800">{value}</p>
     </div>
   );
+}
+
+function Linha({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-right font-semibold text-slate-800">{value}</span>
+    </div>
+  );
+}
+
+function Atalho({ to, titulo, descricao }) {
+  return (
+    <Link to={to} className="rounded-xl border border-slate-200 p-4 transition hover:border-blue-300 hover:bg-blue-50">
+      <p className="font-semibold text-slate-900">{titulo}</p>
+      <p className="mt-1 text-sm text-slate-500">{descricao}</p>
+    </Link>
+  );
+}
+
+function badgeClass(classificacao) {
+  const ruim = ["SEM_RENDA", "DEFICIT", "DESPESAS_ACIMA_DA_RENDA", "RESERVA_INVIAVEL", "METAS_ACIMA_DA_CAPACIDADE"];
+  const atencao = ["EQUILIBRADA", "APERTADA_POR_METAS"];
+
+  if (ruim.includes(classificacao)) {
+    return "rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700";
+  }
+  if (atencao.includes(classificacao)) {
+    return "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700";
+  }
+  return "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700";
+}
+
+function formatarClassificacao(valor) {
+  return String(valor || "Sem classificação")
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/^./, (letra) => letra.toUpperCase());
+}
+
+function formatarMoeda(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 export default Dashboard;
