@@ -27,39 +27,38 @@ public class MotorFinanceiroService {
             throw new IllegalArgumentException("Nenhum perfil financeiro foi cadastrado ainda.");
         }
 
-        BigDecimal rendaMensal = valor(perfil.getRendaMensal());
-        BigDecimal rendaExtra = valor(perfil.getRendaExtra());
-        BigDecimal rendaTotal = rendaMensal.add(rendaExtra);
-
-        BigDecimal despesasPlanejadas = somar(
-                perfil.getGastoMoradia(),
-                perfil.getGastoAgua(),
-                perfil.getGastoEnergia(),
-                perfil.getGastoInternet(),
-                perfil.getGastoTransporte(),
-                perfil.getGastoAlimentacao(),
-                perfil.getOutrasDespesas()
-        );
-
-        BigDecimal reservaPlanejada = valor(perfil.getValorPlanejadoGuardar());
         BigDecimal comprometimentoMensalMetas = compromissoMetasService.calcularComprometimentoMensalTotal();
-        BigDecimal totalCompromissosMensais = despesasPlanejadas
-                .add(reservaPlanejada)
-                .add(comprometimentoMensalMetas);
+        return calcularCapacidade(perfil, comprometimentoMensalMetas);
+    }
 
-        BigDecimal margemAntesMetas = rendaTotal
-                .subtract(despesasPlanejadas)
+    public CapacidadeFinanceira calcularCapacidade(PerfilFinanceiro perfil,
+                                                    BigDecimal comprometimentoMensalMetas) {
+        if (perfil == null) {
+            throw new IllegalArgumentException("O perfil financeiro é obrigatório para o cálculo.");
+        }
+
+        BigDecimal rendaMensal = valor(perfil.getRendaMensal());
+        BigDecimal gastosMensais = valor(perfil.getGastosMensais());
+        BigDecimal reservaPlanejada = valor(perfil.getValorPlanejadoGuardar());
+        BigDecimal metas = valor(comprometimentoMensalMetas);
+        BigDecimal saldoAtual = valor(perfil.getSaldoAtual());
+
+        BigDecimal totalCompromissosMensais = gastosMensais
+                .add(reservaPlanejada)
+                .add(metas);
+
+        BigDecimal margemAntesMetas = rendaMensal
+                .subtract(gastosMensais)
                 .subtract(reservaPlanejada);
 
-        BigDecimal margemAposMetas = rendaTotal.subtract(totalCompromissosMensais);
+        BigDecimal margemAposMetas = rendaMensal.subtract(totalCompromissosMensais);
         BigDecimal capacidadeGastoMensal = maxZero(margemAposMetas);
-        BigDecimal saldoAtual = valor(perfil.getSaldoAtual());
         BigDecimal capacidadeGastoImediato = menor(maxZero(saldoAtual), capacidadeGastoMensal);
-        BigDecimal percentualRendaComprometida = calcularPercentual(totalCompromissosMensais, rendaTotal);
+        BigDecimal percentualRendaComprometida = calcularPercentual(totalCompromissosMensais, rendaMensal);
 
         String classificacao = classificar(
-                rendaTotal,
-                despesasPlanejadas,
+                rendaMensal,
+                gastosMensais,
                 reservaPlanejada,
                 totalCompromissosMensais,
                 saldoAtual,
@@ -75,11 +74,9 @@ public class MotorFinanceiroService {
 
         return new CapacidadeFinanceira(
                 rendaMensal,
-                rendaExtra,
-                rendaTotal,
-                despesasPlanejadas,
+                gastosMensais,
                 reservaPlanejada,
-                comprometimentoMensalMetas,
+                metas,
                 totalCompromissosMensais,
                 margemAntesMetas,
                 margemAposMetas,
@@ -92,14 +89,14 @@ public class MotorFinanceiroService {
         );
     }
 
-    private String classificar(BigDecimal rendaTotal,
-                               BigDecimal despesasPlanejadas,
+    private String classificar(BigDecimal rendaMensal,
+                               BigDecimal gastosMensais,
                                BigDecimal reservaPlanejada,
                                BigDecimal totalCompromissosMensais,
                                BigDecimal saldoAtual,
                                BigDecimal percentualRendaComprometida) {
 
-        if (rendaTotal.compareTo(BigDecimal.ZERO) <= 0) {
+        if (rendaMensal.compareTo(BigDecimal.ZERO) <= 0) {
             return "SEM_RENDA";
         }
 
@@ -107,19 +104,19 @@ public class MotorFinanceiroService {
             return "DEFICIT";
         }
 
-        if (despesasPlanejadas.compareTo(rendaTotal) > 0) {
-            return "DESPESAS_ACIMA_DA_RENDA";
+        if (gastosMensais.compareTo(rendaMensal) > 0) {
+            return "GASTOS_ACIMA_DA_RENDA";
         }
 
-        if (despesasPlanejadas.add(reservaPlanejada).compareTo(rendaTotal) > 0) {
+        if (gastosMensais.add(reservaPlanejada).compareTo(rendaMensal) > 0) {
             return "RESERVA_INVIAVEL";
         }
 
-        if (totalCompromissosMensais.compareTo(rendaTotal) > 0) {
+        if (totalCompromissosMensais.compareTo(rendaMensal) > 0) {
             return "METAS_ACIMA_DA_CAPACIDADE";
         }
 
-        if (totalCompromissosMensais.compareTo(rendaTotal) == 0) {
+        if (totalCompromissosMensais.compareTo(rendaMensal) == 0) {
             return "EQUILIBRADA";
         }
 
@@ -137,8 +134,8 @@ public class MotorFinanceiroService {
         return switch (classificacao) {
             case "SEM_RENDA" -> "Não há renda disponível para calcular uma capacidade de gasto segura.";
             case "DEFICIT" -> "O saldo atual está negativo. Novos gastos não são recomendados.";
-            case "DESPESAS_ACIMA_DA_RENDA" -> "As despesas planejadas já ultrapassam a renda mensal.";
-            case "RESERVA_INVIAVEL" -> "Despesas e valor planejado para guardar ultrapassam a renda mensal.";
+            case "GASTOS_ACIMA_DA_RENDA" -> "Os gastos mensais já ultrapassam a renda mensal.";
+            case "RESERVA_INVIAVEL" -> "Gastos e valor planejado para guardar ultrapassam a renda mensal.";
             case "METAS_ACIMA_DA_CAPACIDADE" -> "As metas, somadas aos demais compromissos, ultrapassam a renda mensal.";
             case "EQUILIBRADA" -> "Toda a renda mensal está comprometida. Não há margem para novos gastos.";
             case "APERTADA" -> "A renda está " + percentualRendaComprometida
@@ -158,25 +155,15 @@ public class MotorFinanceiroService {
                 .divide(total, 2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal somar(BigDecimal... valores) {
-        BigDecimal total = BigDecimal.ZERO;
-
-        for (BigDecimal item : valores) {
-            total = total.add(valor(item));
-        }
-
-        return total;
-    }
-
     private BigDecimal menor(BigDecimal a, BigDecimal b) {
         return a.compareTo(b) <= 0 ? a : b;
     }
 
-    private BigDecimal maxZero(BigDecimal valor) {
-        return valor.compareTo(BigDecimal.ZERO) > 0 ? valor : BigDecimal.ZERO;
+    private BigDecimal maxZero(BigDecimal numero) {
+        return numero.compareTo(BigDecimal.ZERO) > 0 ? numero : BigDecimal.ZERO;
     }
 
-    private BigDecimal valor(BigDecimal valor) {
-        return valor != null ? valor : BigDecimal.ZERO;
+    private BigDecimal valor(BigDecimal numero) {
+        return numero != null ? numero : BigDecimal.ZERO;
     }
 }
