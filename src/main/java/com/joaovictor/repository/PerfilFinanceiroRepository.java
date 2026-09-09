@@ -2,6 +2,7 @@ package com.joaovictor.repository;
 
 import com.joaovictor.model.PerfilFinanceiro;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -108,6 +109,25 @@ public class PerfilFinanceiroRepository {
 
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao atualizar perfil financeiro.", e);
+        }
+    }
+
+    public void atualizarSaldo(long id, BigDecimal saldoAtual) {
+        String sql = "UPDATE perfil_financeiro SET saldo_atual = ? WHERE id = ?";
+
+        try (Connection conn = Conexao.abrir();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setBigDecimal(1, saldoAtual);
+            stmt.setLong(2, id);
+
+            int linhasAfetadas = stmt.executeUpdate();
+            if (linhasAfetadas == 0) {
+                throw new IllegalArgumentException("Perfil financeiro não encontrado para atualização do saldo.");
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao atualizar saldo do perfil financeiro.", e);
         }
     }
 
