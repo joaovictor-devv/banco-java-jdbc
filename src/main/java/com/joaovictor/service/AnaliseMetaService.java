@@ -33,21 +33,35 @@ public class AnaliseMetaService {
         }
 
         SituacaoFinanceira situacao = situacaoFinanceiraService.analisar();
-
-        BigDecimal valorRestante = meta.getValorAlvo().subtract(meta.getValorInicial());
-        BigDecimal valorMensalNecessario = compromissoMetasService.calcularValorMensal(meta);
-        BigDecimal margemAntesMetas = situacao.getMargemAntesMetas();
         Long idParaExcluir = meta.getId() > 0 ? meta.getId() : null;
         BigDecimal comprometimentoOutrasMetas =
                 compromissoMetasService.calcularComprometimentoMensalExcluindo(idParaExcluir);
-        BigDecimal margemDisponivel = margemAntesMetas.subtract(comprometimentoOutrasMetas);
+
+        return analisar(meta, situacao, comprometimentoOutrasMetas);
+    }
+
+    public AnaliseMeta analisar(Meta meta,
+                                SituacaoFinanceira situacao,
+                                BigDecimal comprometimentoOutrasMetas) {
+        if (meta == null) {
+            throw new IllegalArgumentException("A meta é obrigatória para análise.");
+        }
+        if (situacao == null) {
+            throw new IllegalArgumentException("A situação financeira é obrigatória para análise da meta.");
+        }
+
+        BigDecimal valorRestante = valor(meta.getValorAlvo()).subtract(valor(meta.getValorInicial()));
+        BigDecimal valorMensalNecessario = calcularValorMensal(meta, valorRestante);
+        BigDecimal margemAntesMetas = valor(situacao.getMargemAntesMetas());
+        BigDecimal outrasMetas = valor(comprometimentoOutrasMetas);
+        BigDecimal margemDisponivel = margemAntesMetas.subtract(outrasMetas);
 
         if (valorRestante.compareTo(BigDecimal.ZERO) <= 0) {
             return resposta(
                     BigDecimal.ZERO,
                     BigDecimal.ZERO,
                     margemAntesMetas,
-                    comprometimentoOutrasMetas,
+                    outrasMetas,
                     margemDisponivel,
                     true,
                     "CONCLUIDA",
@@ -55,12 +69,16 @@ public class AnaliseMetaService {
             );
         }
 
+        if (meta.getPrazoMeses() <= 0) {
+            throw new IllegalArgumentException("O prazo da meta deve ser maior que zero.");
+        }
+
         if (margemAntesMetas.compareTo(BigDecimal.ZERO) <= 0) {
             return resposta(
                     valorRestante,
                     valorMensalNecessario,
                     margemAntesMetas,
-                    comprometimentoOutrasMetas,
+                    outrasMetas,
                     margemDisponivel,
                     false,
                     "INVIAVEL",
@@ -73,7 +91,7 @@ public class AnaliseMetaService {
                     valorRestante,
                     valorMensalNecessario,
                     margemAntesMetas,
-                    comprometimentoOutrasMetas,
+                    outrasMetas,
                     margemDisponivel,
                     false,
                     "INVIAVEL",
@@ -86,7 +104,7 @@ public class AnaliseMetaService {
                     valorRestante,
                     valorMensalNecessario,
                     margemAntesMetas,
-                    comprometimentoOutrasMetas,
+                    outrasMetas,
                     margemDisponivel,
                     false,
                     "INVIAVEL",
@@ -101,7 +119,7 @@ public class AnaliseMetaService {
                     valorRestante,
                     valorMensalNecessario,
                     margemAntesMetas,
-                    comprometimentoOutrasMetas,
+                    outrasMetas,
                     margemDisponivel,
                     true,
                     "VIAVEL_COM_ATENCAO",
@@ -113,11 +131,23 @@ public class AnaliseMetaService {
                 valorRestante,
                 valorMensalNecessario,
                 margemAntesMetas,
-                comprometimentoOutrasMetas,
+                outrasMetas,
                 margemDisponivel,
                 true,
                 "VIAVEL",
                 "A meta é viável considerando o orçamento atual e as outras metas cadastradas."
+        );
+    }
+
+    private BigDecimal calcularValorMensal(Meta meta, BigDecimal valorRestante) {
+        if (valorRestante.compareTo(BigDecimal.ZERO) <= 0 || meta.getPrazoMeses() <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return valorRestante.divide(
+                BigDecimal.valueOf(meta.getPrazoMeses()),
+                2,
+                RoundingMode.CEILING
         );
     }
 
@@ -190,5 +220,9 @@ public class AnaliseMetaService {
         return valorRestante
                 .divide(capacidadeMensal, 0, RoundingMode.CEILING)
                 .intValue();
+    }
+
+    private BigDecimal valor(BigDecimal numero) {
+        return numero != null ? numero : BigDecimal.ZERO;
     }
 }
