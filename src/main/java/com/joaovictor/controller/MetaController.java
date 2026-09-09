@@ -21,7 +21,28 @@ public class MetaController {
 
     @PostMapping
     public ResponseEntity<ApiResponse> cadastrar(@RequestBody MetaRequest request) {
-        Meta meta = service.cadastrarMeta(
+        service.validarMeta(
+                request.getNome(),
+                request.getValorAlvo(),
+                request.getPrazoMeses(),
+                request.getValorInicial(),
+                request.getPrioridade()
+        );
+
+        // A análise acontece antes da gravação para evitar uma meta persistida
+        // caso o perfil financeiro ainda não permita avaliar sua viabilidade.
+        Meta candidata = new Meta(
+                request.getNome(),
+                request.getValorAlvo(),
+                request.getPrazoMeses(),
+                request.getValorInicial(),
+                request.getPrioridade(),
+                request.getDescricao()
+        );
+
+        AnaliseMeta analise = analiseMetaService.analisar(candidata);
+
+        service.cadastrarMeta(
                 request.getValorAlvo(),
                 request.getNome(),
                 request.getPrazoMeses(),
@@ -30,7 +51,6 @@ public class MetaController {
                 request.getDescricao()
         );
 
-        AnaliseMeta analise = analiseMetaService.analisar(meta);
         String mensagem = "Meta cadastrada com sucesso. " + analise.getMensagem();
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -42,14 +62,14 @@ public class MetaController {
         return ResponseEntity.ok(service.listarMetas());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Meta> buscarPorId(@PathVariable long id) {
-        return ResponseEntity.ok(service.buscarPorId(id));
-    }
-
     @GetMapping("/{id}/viabilidade")
     public ResponseEntity<AnaliseMeta> analisarViabilidade(@PathVariable long id) {
         return ResponseEntity.ok(analiseMetaService.analisar(id));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Meta> buscarPorId(@PathVariable long id) {
+        return ResponseEntity.ok(service.buscarPorId(id));
     }
 
     @DeleteMapping("/{id}")
