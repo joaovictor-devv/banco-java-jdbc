@@ -3,10 +3,13 @@ package com.joaovictor.service;
 import com.joaovictor.model.AnaliseMeta;
 import com.joaovictor.model.Meta;
 import com.joaovictor.model.SituacaoFinanceira;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
+@Service
 public class AnaliseMetaService {
 
     private static final BigDecimal LIMITE_ATENCAO = new BigDecimal("0.80");
@@ -18,9 +21,16 @@ public class AnaliseMetaService {
     private final CompromissoMetasService compromissoMetasService;
 
     public AnaliseMetaService() {
-        this.metaService = new MetaService();
-        this.situacaoFinanceiraService = new SituacaoFinanceiraService();
-        this.compromissoMetasService = new CompromissoMetasService();
+        this(new MetaService(), new SituacaoFinanceiraService(), new CompromissoMetasService());
+    }
+
+    @Autowired
+    public AnaliseMetaService(MetaService metaService,
+                              SituacaoFinanceiraService situacaoFinanceiraService,
+                              CompromissoMetasService compromissoMetasService) {
+        this.metaService = metaService;
+        this.situacaoFinanceiraService = situacaoFinanceiraService;
+        this.compromissoMetasService = compromissoMetasService;
     }
 
     public AnaliseMeta analisar(long id) {
