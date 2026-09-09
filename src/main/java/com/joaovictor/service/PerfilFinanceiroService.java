@@ -13,54 +13,25 @@ public class PerfilFinanceiroService {
         this.repository = new PerfilFinanceiroRepository();
     }
 
-    public void cadastrarPerfil(BigDecimal rendaMensal,
-                                BigDecimal rendaExtra,
-                                BigDecimal gastoMoradia,
-                                BigDecimal gastoAgua,
-                                BigDecimal gastoEnergia,
-                                BigDecimal gastoInternet,
-                                BigDecimal gastoTransporte,
-                                BigDecimal gastoAlimentacao,
-                                BigDecimal outrasDespesas,
-                                BigDecimal valorPlanejadoGuardar,
-                                String objetivoPrincipal,
-                                BigDecimal saldoAtual) {
+    public PerfilFinanceiro cadastrarPerfil(String nome, BigDecimal saldoAtual) {
+        if (repository.buscarUltimoPerfil() != null) {
+            throw new IllegalArgumentException("Já existe um perfil financeiro. Use a atualização do perfil.");
+        }
 
-        BigDecimal rendaExtraNormalizada = valorOuZero(rendaExtra);
-        BigDecimal outrasDespesasNormalizadas = valorOuZero(outrasDespesas);
+        String nomeNormalizado = normalizarNome(nome);
         BigDecimal saldoNormalizado = valorOuZero(saldoAtual);
-        String objetivoNormalizado = normalizarObjetivo(objetivoPrincipal);
-
-        validarCampos(
-                rendaMensal,
-                rendaExtraNormalizada,
-                gastoMoradia,
-                gastoAgua,
-                gastoEnergia,
-                gastoInternet,
-                gastoTransporte,
-                gastoAlimentacao,
-                outrasDespesasNormalizadas,
-                valorPlanejadoGuardar,
-                saldoNormalizado
-        );
+        validarSaldo(saldoNormalizado);
 
         PerfilFinanceiro perfil = new PerfilFinanceiro(
-                rendaMensal,
-                rendaExtraNormalizada,
-                gastoMoradia,
-                gastoAgua,
-                gastoEnergia,
-                gastoInternet,
-                gastoTransporte,
-                gastoAlimentacao,
-                outrasDespesasNormalizadas,
-                valorPlanejadoGuardar,
-                objetivoNormalizado,
-                saldoNormalizado
+                nomeNormalizado,
+                saldoNormalizado,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO
         );
 
         repository.salvar(perfil);
+        return buscarUltimoPerfil();
     }
 
     public PerfilFinanceiro buscarUltimoPerfil() {
@@ -73,79 +44,32 @@ public class PerfilFinanceiroService {
         return perfil;
     }
 
-    public PerfilFinanceiro buscarPorId(long id) {
-        PerfilFinanceiro perfil = repository.buscarPorId(id);
+    public PerfilFinanceiro atualizarPerfil(String nome, BigDecimal saldoAtual) {
+        PerfilFinanceiro existente = buscarUltimoPerfil();
 
-        if (perfil == null) {
-            throw new IllegalArgumentException("Perfil financeiro não encontrado para o id informado.");
-        }
+        String nomeNormalizado = nome == null
+                ? normalizarNome(existente.getNome())
+                : normalizarNome(nome);
+        BigDecimal saldoNormalizado = saldoAtual == null
+                ? valorOuZero(existente.getSaldoAtual())
+                : saldoAtual;
+        validarSaldo(saldoNormalizado);
 
-        return perfil;
-    }
-
-    public void atualizarPerfil(long id,
-                                BigDecimal rendaMensal,
-                                BigDecimal rendaExtra,
-                                BigDecimal gastoMoradia,
-                                BigDecimal gastoAgua,
-                                BigDecimal gastoEnergia,
-                                BigDecimal gastoInternet,
-                                BigDecimal gastoTransporte,
-                                BigDecimal gastoAlimentacao,
-                                BigDecimal outrasDespesas,
-                                BigDecimal valorPlanejadoGuardar,
-                                String objetivoPrincipal,
-                                BigDecimal saldoAtual) {
-
-        PerfilFinanceiro perfilExistente = repository.buscarPorId(id);
-        if (perfilExistente == null) {
-            throw new IllegalArgumentException("Perfil financeiro não encontrado para atualização.");
-        }
-
-        BigDecimal rendaExtraNormalizada = valorOuZero(rendaExtra);
-        BigDecimal outrasDespesasNormalizadas = valorOuZero(outrasDespesas);
-        BigDecimal saldoNormalizado = saldoAtual != null
-                ? saldoAtual
-                : valorOuZero(perfilExistente.getSaldoAtual());
-        String objetivoNormalizado = objetivoPrincipal == null
-                ? normalizarObjetivo(perfilExistente.getObjetivoPrincipal())
-                : normalizarObjetivo(objetivoPrincipal);
-
-        validarCampos(
-                rendaMensal,
-                rendaExtraNormalizada,
-                gastoMoradia,
-                gastoAgua,
-                gastoEnergia,
-                gastoInternet,
-                gastoTransporte,
-                gastoAlimentacao,
-                outrasDespesasNormalizadas,
-                valorPlanejadoGuardar,
-                saldoNormalizado
+        PerfilFinanceiro atualizado = new PerfilFinanceiro(
+                existente.getId(),
+                nomeNormalizado,
+                saldoNormalizado,
+                valorOuZero(existente.getRendaMensal()),
+                valorOuZero(existente.getGastosMensais()),
+                valorOuZero(existente.getValorPlanejadoGuardar())
         );
 
-        PerfilFinanceiro perfilAtualizado = new PerfilFinanceiro(
-                id,
-                rendaMensal,
-                rendaExtraNormalizada,
-                gastoMoradia,
-                gastoAgua,
-                gastoEnergia,
-                gastoInternet,
-                gastoTransporte,
-                gastoAlimentacao,
-                outrasDespesasNormalizadas,
-                valorPlanejadoGuardar,
-                objetivoNormalizado,
-                saldoNormalizado
-        );
-
-        repository.atualizar(id, perfilAtualizado);
+        repository.atualizar(existente.getId(), atualizado);
+        return atualizado;
     }
 
     public PerfilFinanceiro atualizarSaldoAtual(BigDecimal saldoAtual) {
-        validarNaoNegativo(saldoAtual, "O saldo atual é obrigatório e não pode ser negativo.");
+        validarSaldo(saldoAtual);
 
         PerfilFinanceiro perfil = buscarUltimoPerfil();
         repository.atualizarSaldo(perfil.getId(), saldoAtual);
@@ -153,41 +77,21 @@ public class PerfilFinanceiroService {
         return perfil;
     }
 
-    private void validarCampos(BigDecimal rendaMensal,
-                               BigDecimal rendaExtra,
-                               BigDecimal gastoMoradia,
-                               BigDecimal gastoAgua,
-                               BigDecimal gastoEnergia,
-                               BigDecimal gastoInternet,
-                               BigDecimal gastoTransporte,
-                               BigDecimal gastoAlimentacao,
-                               BigDecimal outrasDespesas,
-                               BigDecimal valorPlanejadoGuardar,
-                               BigDecimal saldoAtual) {
-
-        validarNaoNegativo(rendaMensal, "A renda mensal é obrigatória e não pode ser negativa.");
-        validarNaoNegativo(rendaExtra, "A renda extra não pode ser negativa.");
-        validarNaoNegativo(gastoMoradia, "O gasto com moradia é obrigatório e não pode ser negativo.");
-        validarNaoNegativo(gastoAgua, "O gasto com água é obrigatório e não pode ser negativo.");
-        validarNaoNegativo(gastoEnergia, "O gasto com energia é obrigatório e não pode ser negativo.");
-        validarNaoNegativo(gastoInternet, "O gasto com internet é obrigatório e não pode ser negativo.");
-        validarNaoNegativo(gastoTransporte, "O gasto com transporte é obrigatório e não pode ser negativo.");
-        validarNaoNegativo(gastoAlimentacao, "O gasto com alimentação é obrigatório e não pode ser negativo.");
-        validarNaoNegativo(outrasDespesas, "Outras despesas não podem ser negativas.");
-        validarNaoNegativo(valorPlanejadoGuardar, "O valor planejado para guardar é obrigatório e não pode ser negativo.");
-        validarNaoNegativo(saldoAtual, "O saldo atual não pode ser negativo.");
-    }
-
-    private String normalizarObjetivo(String objetivoPrincipal) {
-        if (objetivoPrincipal == null || objetivoPrincipal.isBlank()) {
-            return "Organizar finanças";
+    private String normalizarNome(String nome) {
+        if (nome == null || nome.isBlank()) {
+            return "Usuário";
         }
-        return objetivoPrincipal.trim();
+
+        String nomeNormalizado = nome.trim();
+        if (nomeNormalizado.length() > 100) {
+            throw new IllegalArgumentException("O nome deve ter no máximo 100 caracteres.");
+        }
+        return nomeNormalizado;
     }
 
-    private void validarNaoNegativo(BigDecimal valor, String mensagem) {
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException(mensagem);
+    private void validarSaldo(BigDecimal saldoAtual) {
+        if (saldoAtual == null || saldoAtual.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("O saldo atual é obrigatório e não pode ser negativo.");
         }
     }
 
