@@ -20,6 +20,11 @@ public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(RecursoNaoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> tratarRecursoNaoEncontrado(RecursoNaoEncontradoException e) {
+        return resposta(HttpStatus.NOT_FOUND, "RECURSO_NAO_ENCONTRADO", e.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> tratarIllegalArgument(IllegalArgumentException e) {
         return resposta(HttpStatus.BAD_REQUEST, "DADOS_INVALIDOS", e.getMessage());
