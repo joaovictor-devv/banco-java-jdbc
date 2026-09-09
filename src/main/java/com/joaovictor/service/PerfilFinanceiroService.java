@@ -3,9 +3,12 @@ package com.joaovictor.service;
 import com.joaovictor.exception.RecursoNaoEncontradoException;
 import com.joaovictor.model.PerfilFinanceiro;
 import com.joaovictor.repository.PerfilFinanceiroRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 
+@Service
 public class PerfilFinanceiroService {
 
     private final PerfilFinanceiroRepository repository;
@@ -14,6 +17,7 @@ public class PerfilFinanceiroService {
         this(new PerfilFinanceiroRepository());
     }
 
+    @Autowired
     public PerfilFinanceiroService(PerfilFinanceiroRepository repository) {
         this.repository = repository;
     }
