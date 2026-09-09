@@ -21,20 +21,28 @@ public class MetaService {
                               String prioridade,
                               String descricao) {
 
-        validarCampos(nome, valorAlvo, prazoMeses, valorInicial, prioridade);
+        validarMeta(nome, valorAlvo, prazoMeses, valorInicial, prioridade);
 
         Meta meta = new Meta(
-                nome,
+                nome.trim(),
                 valorAlvo,
                 prazoMeses,
                 valorInicial,
-                prioridade,
-                descricao
+                prioridade.trim(),
+                normalizarDescricao(descricao)
         );
 
         long id = repository.salvar(meta);
         meta.setId(id);
         return meta;
+    }
+
+    public void validarMeta(String nome,
+                            BigDecimal valorAlvo,
+                            Integer prazoMeses,
+                            BigDecimal valorInicial,
+                            String prioridade) {
+        validarCampos(nome, valorAlvo, prazoMeses, valorInicial, prioridade);
     }
 
     public List<Meta> listarMetas() {
@@ -69,6 +77,10 @@ public class MetaService {
             throw new IllegalArgumentException("O nome da meta é obrigatório.");
         }
 
+        if (nome.length() > 100) {
+            throw new IllegalArgumentException("O nome da meta deve ter no máximo 100 caracteres.");
+        }
+
         if (valorAlvo == null || valorAlvo.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("O valor alvo deve ser maior que zero.");
         }
@@ -88,5 +100,21 @@ public class MetaService {
         if (prioridade == null || prioridade.isBlank()) {
             throw new IllegalArgumentException("A prioridade é obrigatória.");
         }
+
+        if (prioridade.length() > 30) {
+            throw new IllegalArgumentException("A prioridade deve ter no máximo 30 caracteres.");
+        }
+    }
+
+    private String normalizarDescricao(String descricao) {
+        if (descricao == null || descricao.isBlank()) {
+            return null;
+        }
+
+        if (descricao.length() > 255) {
+            throw new IllegalArgumentException("A descrição deve ter no máximo 255 caracteres.");
+        }
+
+        return descricao.trim();
     }
 }
