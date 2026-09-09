@@ -5,7 +5,6 @@ import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.ContextoFinanceiroIA;
 import com.joaovictor.model.Meta;
 import com.joaovictor.model.ResumoFinanceiro;
-import com.joaovictor.model.RevisaoMensal;
 import com.joaovictor.model.SituacaoFinanceira;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +17,6 @@ public class ContextoFinanceiroIAService {
     private final AnaliseFinanceiraService analiseService;
     private final SugestaoFinanceiraService sugestaoService;
     private final MetaService metaService;
-    private final RevisaoMensalService revisaoMensalService;
     private final AnaliseMetaService analiseMetaService;
     private final MotorFinanceiroService motorFinanceiroService;
 
@@ -27,7 +25,6 @@ public class ContextoFinanceiroIAService {
         this.analiseService = new AnaliseFinanceiraService();
         this.sugestaoService = new SugestaoFinanceiraService();
         this.metaService = new MetaService();
-        this.revisaoMensalService = new RevisaoMensalService();
         this.analiseMetaService = new AnaliseMetaService();
         this.motorFinanceiroService = new MotorFinanceiroService();
     }
@@ -37,12 +34,8 @@ public class ContextoFinanceiroIAService {
         ResumoFinanceiro resumo = analiseService.gerarResumoDoMesAtual();
         List<String> sugestoes = sugestaoService.gerarSugestoesDoMesAtual();
         List<Meta> metas = metaService.listarMetas();
-        List<RevisaoMensal> revisoes = revisaoMensalService.listarRevisoes()
-                .stream()
-                .limit(5)
-                .toList();
 
-        return new ContextoFinanceiroIA(situacao, resumo, sugestoes, metas, revisoes);
+        return new ContextoFinanceiroIA(situacao, resumo, sugestoes, metas);
     }
 
     public String montarTexto() {
@@ -59,7 +52,7 @@ public class ContextoFinanceiroIAService {
                 .append("Renda mensal: R$ ").append(s.getRendaMensal()).append('\n')
                 .append("Renda extra: R$ ").append(s.getRendaExtra()).append('\n')
                 .append("Renda total: R$ ").append(s.getRendaTotal()).append('\n')
-                .append("Despesas planejadas: R$ ").append(s.getDespesasPlanejadas()).append('\n')
+                .append("Despesas/gastos mensais planejados: R$ ").append(s.getDespesasPlanejadas()).append('\n')
                 .append("Valor planejado para guardar: R$ ").append(s.getValorPlanejadoGuardar()).append('\n')
                 .append("Margem livre antes das metas: R$ ").append(s.getMargemLivre()).append('\n')
                 .append("Comprometimento mensal total das metas: R$ ").append(s.getComprometimentoMensalMetas()).append('\n')
@@ -79,7 +72,7 @@ public class ContextoFinanceiroIAService {
                 .append("Resultado das transações do mês: R$ ").append(r.getSaldoMes()).append('\n')
                 .append("Maior categoria de gasto registrada: ").append(r.getCategoriaMaiorGasto()).append('\n')
                 .append("Valor da maior categoria: R$ ").append(r.getValorMaiorGasto()).append('\n')
-                .append("Observação: o saldo atual informado no perfil é a fonte usada para decisões de disponibilidade imediata.\n\n");
+                .append("Observação: transações são opcionais; o saldo atual informado no perfil é a fonte usada para disponibilidade imediata.\n\n");
 
         texto.append("METAS CADASTRADAS:\n");
         if (contexto.getMetas().isEmpty()) {
@@ -89,34 +82,19 @@ public class ContextoFinanceiroIAService {
                 AnaliseMeta analise = analiseMetaService.analisar(meta);
                 texto.append("- ").append(meta.getNome())
                         .append(" | alvo: R$ ").append(meta.getValorAlvo())
-                        .append(" | inicial: R$ ").append(meta.getValorInicial())
-                        .append(" | prazo: ").append(meta.getPrazoMeses()).append(" meses")
+                        .append(" | atual reservado: R$ ").append(meta.getValorInicial())
+                        .append(" | prazo informado: ").append(meta.getPrazoMeses()).append(" meses")
                         .append(" | prioridade: ").append(meta.getPrioridade())
                         .append(" | necessário/mês: R$ ").append(analise.getValorMensalNecessario())
                         .append(" | outras metas comprometem: R$ ").append(analise.getComprometimentoOutrasMetas())
                         .append(" | margem disponível para esta meta: R$ ").append(analise.getMargemDisponivelParaMeta())
+                        .append(" | percentual da margem exigido: ").append(analise.getPercentualMargemComprometida()).append("%")
+                        .append(" | prazo mínimo viável: ").append(analise.getPrazoMinimoViavelMeses())
+                        .append(" | prazo confortável: ").append(analise.getPrazoConfortavelMeses())
                         .append(" | classificação: ").append(analise.getClassificacao())
                         .append(" | viável: ").append(analise.isViavel())
                         .append(" | motivo: ").append(analise.getMensagem())
                         .append('\n');
-            }
-        }
-
-        texto.append("\nREVISÕES MENSAIS RECENTES:\n");
-        if (contexto.getRevisoesMensais().isEmpty()) {
-            texto.append("Nenhuma revisão mensal cadastrada.\n");
-        } else {
-            for (RevisaoMensal revisao : contexto.getRevisoesMensais()) {
-                texto.append("- ").append(revisao.getMesReferencia())
-                        .append(" | gasto inesperado: ").append(revisao.isGastoInesperado())
-                        .append(" | valor incorreto: ").append(revisao.isValorIncorreto())
-                        .append(" | revisar categorias: ").append(revisao.isRevisarCategorias());
-
-                if (revisao.getObservacoes() != null && !revisao.getObservacoes().isBlank()) {
-                    texto.append(" | observações: ").append(revisao.getObservacoes());
-                }
-
-                texto.append('\n');
             }
         }
 
@@ -128,6 +106,9 @@ public class ContextoFinanceiroIAService {
                 texto.append("- ").append(sugestao).append('\n');
             }
         }
+
+        texto.append("\nREGRA DE INTERPRETAÇÃO:\n")
+                .append("O motor financeiro é a fonte dos números e classificações. A IA deve explicar, comparar e contextualizar esses resultados, sem inventar valores nem sobrescrever os cálculos.\n");
 
         return texto.toString();
     }
