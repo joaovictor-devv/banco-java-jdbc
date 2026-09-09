@@ -1,0 +1,238 @@
+package com.joaovictor.service;
+
+import com.joaovictor.dto.EventoSimulacaoRequest;
+import com.joaovictor.dto.SimulacaoFinanceiraRequest;
+import com.joaovictor.model.CapacidadeFinanceira;
+import com.joaovictor.model.Meta;
+import com.joaovictor.model.ProjecaoMeta;
+import com.joaovictor.model.ResultadoSimulacaoFinanceira;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class MotorSimulacaoServiceTest {
+
+    private final MotorSimulacaoService service = new MotorSimulacaoService();
+
+    @Test
+    void deveProjetarCenarioEstavelPorTresMeses() {
+        SimulacaoFinanceiraRequest request = request(3);
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        );
+
+        assertThat(resultado.getSaldoInicial()).isEqualByComparingTo("1200");
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("3900");
+        assertThat(resultado.getVariacaoSaldo()).isEqualByComparingTo("2700");
+        assertThat(resultado.getTotalReservaPlanejada()).isEqualByComparingTo("900");
+        assertThat(resultado.getTotalAportadoMetas()).isZero();
+        assertThat(resultado.getEvolucaoMensal()).hasSize(3);
+        assertThat(resultado.getEvolucaoMensal().get(0).getMargemMensal()).isEqualByComparingTo("900");
+        assertThat(resultado.getEvolucaoMensal().get(2).getSaldoDisponivelProjetado()).isEqualByComparingTo("3900");
+        assertThat(resultado.getClassificacaoFinal()).isEqualTo("SAUDAVEL");
+    }
+
+    @Test
+    void gastoExtraordinarioDeveAfetarSomenteOMesEscolhido() {
+        SimulacaoFinanceiraRequest request = request(3);
+        request.setEventos(List.of(evento(2, "GASTO_EXTRAORDINARIO", "600", null)));
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        );
+
+        assertThat(resultado.getEvolucaoMensal().get(0).getSaldoDisponivelProjetado()).isEqualByComparingTo("2100");
+        assertThat(resultado.getEvolucaoMensal().get(1).getMargemMensal()).isEqualByComparingTo("300");
+        assertThat(resultado.getEvolucaoMensal().get(1).getSaldoDisponivelProjetado()).isEqualByComparingTo("2400");
+        assertThat(resultado.getEvolucaoMensal().get(2).getSaldoDisponivelProjetado()).isEqualByComparingTo("3300");
+        assertThat(resultado.getTotalGastosExtraordinarios()).isEqualByComparingTo("600");
+        assertThat(resultado.getEvolucaoMensal().get(1).getEventosAplicados())
+                .anyMatch(texto -> texto.contains("600"));
+    }
+
+    @Test
+    void alteracaoDeRendaDevePersistirNosMesesSeguintes() {
+        SimulacaoFinanceiraRequest request = request(3);
+        request.setEventos(List.of(evento(2, "ALTERAR_RENDA", "2000", null)));
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        );
+
+        assertThat(resultado.getEvolucaoMensal().get(0).getMargemMensal()).isEqualByComparingTo("900");
+        assertThat(resultado.getEvolucaoMensal().get(1).getMargemMensal()).isEqualByComparingTo("400");
+        assertThat(resultado.getEvolucaoMensal().get(2).getMargemMensal()).isEqualByComparingTo("400");
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("2900");
+    }
+
+    @Test
+    void rendaExtraordinariaDeveSerSomadaUmaUnicaVez() {
+        SimulacaoFinanceiraRequest request = request(3);
+        request.setEventos(List.of(evento(2, "RENDA_EXTRAORDINARIA", "500", null)));
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        );
+
+        assertThat(resultado.getTotalRendasExtraordinarias()).isEqualByComparingTo("500");
+        assertThat(resultado.getEvolucaoMensal().get(1).getRendaExtraordinaria()).isEqualByComparingTo("500");
+        assertThat(resultado.getEvolucaoMensal().get(2).getRendaExtraordinaria()).isZero();
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("4400");
+    }
+
+    @Test
+    void deveProjetarAvancoDeMetaSemAlterarMetaReal() {
+        Meta meta = meta(1, "Notebook", "2000", "0", 10, "alta");
+        SimulacaoFinanceiraRequest request = request(3);
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "200", "1200"),
+                List.of(meta)
+        );
+
+        ProjecaoMeta projecao = resultado.getProjecoesMetas().get(0);
+
+        assertThat(resultado.getTotalAportadoMetas()).isEqualByComparingTo("600.00");
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("3300.00");
+        assertThat(projecao.getValorProjetado()).isEqualByComparingTo("600.00");
+        assertThat(projecao.getProgressoProjetadoPercentual()).isEqualByComparingTo("30.00");
+        assertThat(projecao.isConcluidaNoPeriodo()).isFalse();
+        assertThat(meta.getValorInicial()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void aporteExtraPodeConcluirMetaEParaDeConsumirSaldoDepois() {
+        Meta meta = meta(1, "Curso", "500", "0", 5, "alta");
+        SimulacaoFinanceiraRequest request = request(3);
+        request.setAporteExtraMetasMensal(dinheiro("400"));
+        request.setMetaPrioritariaId(1L);
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "100", "1200"),
+                List.of(meta)
+        );
+
+        ProjecaoMeta projecao = resultado.getProjecoesMetas().get(0);
+
+        assertThat(resultado.getTotalAportadoMetas()).isEqualByComparingTo("500.00");
+        assertThat(projecao.isConcluidaNoPeriodo()).isTrue();
+        assertThat(projecao.getMesConclusaoNaSimulacao()).isEqualTo(1);
+        assertThat(projecao.getValorProjetado()).isEqualByComparingTo("500");
+        assertThat(resultado.getEvolucaoMensal().get(1).getAporteMetasBase()).isZero();
+        assertThat(resultado.getEvolucaoMensal().get(1).getAporteExtraMetas()).isZero();
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("3400.00");
+    }
+
+    @Test
+    void aporteEspecificoDeveSerAplicadoSomenteNaMetaIndicada() {
+        Meta alta = meta(1, "Notebook", "2000", "0", 10, "alta");
+        Meta baixa = meta(2, "Viagem", "2000", "0", 10, "baixa");
+        SimulacaoFinanceiraRequest request = request(2);
+        request.setEventos(List.of(evento(1, "ALTERAR_APORTE_META", "100", 2L)));
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("3000", "1000", "300", "400", "2000"),
+                List.of(alta, baixa)
+        );
+
+        ProjecaoMeta projecaoAlta = resultado.getProjecoesMetas().stream()
+                .filter(meta -> meta.getId() == 1)
+                .findFirst()
+                .orElseThrow();
+        ProjecaoMeta projecaoBaixa = resultado.getProjecoesMetas().stream()
+                .filter(meta -> meta.getId() == 2)
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(projecaoAlta.getValorProjetado()).isEqualByComparingTo("400.00");
+        assertThat(projecaoBaixa.getValorProjetado()).isEqualByComparingTo("600.00");
+    }
+
+    @Test
+    void deveRejeitarMetaReferenciadaQueNaoExiste() {
+        SimulacaoFinanceiraRequest request = request(3);
+        request.setMetaPrioritariaId(99L);
+
+        assertThatThrownBy(() -> service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("meta prioritária");
+    }
+
+    private SimulacaoFinanceiraRequest request(int meses) {
+        SimulacaoFinanceiraRequest request = new SimulacaoFinanceiraRequest();
+        request.setMeses(meses);
+        return request;
+    }
+
+    private EventoSimulacaoRequest evento(int mes, String tipo, String valor, Long metaId) {
+        EventoSimulacaoRequest evento = new EventoSimulacaoRequest();
+        evento.setMes(mes);
+        evento.setTipo(tipo);
+        evento.setValor(dinheiro(valor));
+        evento.setMetaId(metaId);
+        return evento;
+    }
+
+    private Meta meta(long id, String nome, String alvo, String atual, int prazo, String prioridade) {
+        Meta meta = new Meta(nome, dinheiro(alvo), prazo, dinheiro(atual), prioridade, null);
+        meta.setId(id);
+        return meta;
+    }
+
+    private CapacidadeFinanceira capacidade(String renda,
+                                             String gastos,
+                                             String reserva,
+                                             String metas,
+                                             String saldo) {
+        BigDecimal rendaValor = dinheiro(renda);
+        BigDecimal gastosValor = dinheiro(gastos);
+        BigDecimal reservaValor = dinheiro(reserva);
+        BigDecimal metasValor = dinheiro(metas);
+        BigDecimal total = gastosValor.add(reservaValor).add(metasValor);
+        BigDecimal margemAntes = rendaValor.subtract(gastosValor).subtract(reservaValor);
+        BigDecimal margemApos = rendaValor.subtract(total);
+        BigDecimal capacidadeMensal = margemApos.max(BigDecimal.ZERO);
+        BigDecimal saldoValor = dinheiro(saldo);
+        BigDecimal imediato = saldoValor.min(capacidadeMensal);
+
+        return new CapacidadeFinanceira(
+                rendaValor,
+                gastosValor,
+                reservaValor,
+                metasValor,
+                total,
+                margemAntes,
+                margemApos,
+                capacidadeMensal,
+                saldoValor,
+                imediato,
+                BigDecimal.ZERO,
+                "SAUDAVEL",
+                "teste"
+        );
+    }
+
+    private BigDecimal dinheiro(String valor) {
+        return new BigDecimal(valor);
+    }
+}
