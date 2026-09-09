@@ -36,17 +36,17 @@ public class AnaliseMetaService {
 
         BigDecimal valorRestante = meta.getValorAlvo().subtract(meta.getValorInicial());
         BigDecimal valorMensalNecessario = compromissoMetasService.calcularValorMensal(meta);
-        BigDecimal margemLivre = situacao.getMargemLivre();
+        BigDecimal margemAntesMetas = situacao.getMargemAntesMetas();
         Long idParaExcluir = meta.getId() > 0 ? meta.getId() : null;
         BigDecimal comprometimentoOutrasMetas =
                 compromissoMetasService.calcularComprometimentoMensalExcluindo(idParaExcluir);
-        BigDecimal margemDisponivel = margemLivre.subtract(comprometimentoOutrasMetas);
+        BigDecimal margemDisponivel = margemAntesMetas.subtract(comprometimentoOutrasMetas);
 
         if (valorRestante.compareTo(BigDecimal.ZERO) <= 0) {
             return resposta(
                     BigDecimal.ZERO,
                     BigDecimal.ZERO,
-                    margemLivre,
+                    margemAntesMetas,
                     comprometimentoOutrasMetas,
                     margemDisponivel,
                     true,
@@ -55,11 +55,11 @@ public class AnaliseMetaService {
             );
         }
 
-        if (margemLivre.compareTo(BigDecimal.ZERO) <= 0) {
+        if (margemAntesMetas.compareTo(BigDecimal.ZERO) <= 0) {
             return resposta(
                     valorRestante,
                     valorMensalNecessario,
-                    margemLivre,
+                    margemAntesMetas,
                     comprometimentoOutrasMetas,
                     margemDisponivel,
                     false,
@@ -72,12 +72,12 @@ public class AnaliseMetaService {
             return resposta(
                     valorRestante,
                     valorMensalNecessario,
-                    margemLivre,
+                    margemAntesMetas,
                     comprometimentoOutrasMetas,
                     margemDisponivel,
                     false,
                     "INVIAVEL",
-                    "As outras metas já comprometem toda a sua margem livre mensal."
+                    "As outras metas já comprometem toda a margem disponível para uma nova meta."
             );
         }
 
@@ -85,7 +85,7 @@ public class AnaliseMetaService {
             return resposta(
                     valorRestante,
                     valorMensalNecessario,
-                    margemLivre,
+                    margemAntesMetas,
                     comprometimentoOutrasMetas,
                     margemDisponivel,
                     false,
@@ -100,7 +100,7 @@ public class AnaliseMetaService {
             return resposta(
                     valorRestante,
                     valorMensalNecessario,
-                    margemLivre,
+                    margemAntesMetas,
                     comprometimentoOutrasMetas,
                     margemDisponivel,
                     true,
@@ -112,7 +112,7 @@ public class AnaliseMetaService {
         return resposta(
                 valorRestante,
                 valorMensalNecessario,
-                margemLivre,
+                margemAntesMetas,
                 comprometimentoOutrasMetas,
                 margemDisponivel,
                 true,
@@ -123,7 +123,7 @@ public class AnaliseMetaService {
 
     private AnaliseMeta resposta(BigDecimal valorRestante,
                                  BigDecimal valorMensalNecessario,
-                                 BigDecimal margemLivre,
+                                 BigDecimal margemAntesMetas,
                                  BigDecimal comprometimentoOutrasMetas,
                                  BigDecimal margemDisponivel,
                                  boolean viavel,
@@ -149,14 +149,15 @@ public class AnaliseMetaService {
 
         String mensagemFinal = mensagem;
         if (!viavel && prazoConfortavel != null && prazoConfortavel > 0) {
-            mensagemFinal += " Mantendo a situação atual, um prazo mais confortável seria de aproximadamente "
+            mensagemFinal += " Mantendo a situação atual, o prazo mínimo é de "
+                    + prazoMinimoViavel + " meses e um prazo mais confortável seria de aproximadamente "
                     + prazoConfortavel + " meses.";
         }
 
         return new AnaliseMeta(
                 valorRestante,
                 valorMensalNecessario,
-                margemLivre,
+                margemAntesMetas,
                 comprometimentoOutrasMetas,
                 margemDisponivel,
                 percentualMargemComprometida,
