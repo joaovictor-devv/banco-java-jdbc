@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { buscarPrevisaoMetas } from "../services/iaService";
-import { cadastrarMeta, excluirMeta, listarMetas } from "../services/metaService";
+import {
+  analisarViabilidadeMeta,
+  cadastrarMeta,
+  excluirMeta,
+  listarMetas,
+} from "../services/metaService";
 
 function Metas() {
   const [metas, setMetas] = useState([]);
-  const [previsaoIA, setPrevisaoIA] = useState(null);
+  const [analises, setAnalises] = useState({});
   const [mensagem, setMensagem] = useState("");
+  const [erro, setErro] = useState("");
+  const [salvando, setSalvando] = useState(false);
 
   const [novaMeta, setNovaMeta] = useState({
     nome: "",
@@ -19,50 +25,51 @@ function Metas() {
   const carregarMetas = useCallback(async () => {
     try {
       const response = await listarMetas();
-      setMetas(response.data);
+      const lista = response.data || [];
+      setMetas(lista);
+
+      const pares = await Promise.all(
+        lista.map(async (meta) => {
+          try {
+            const analise = await analisarViabilidadeMeta(meta.id);
+            return [meta.id, analise.data];
+          } catch {
+            return [meta.id, null];
+          }
+        })
+      );
+
+      setAnalises(Object.fromEntries(pares));
     } catch (error) {
-      console.error("Erro ao listar metas:", error);
-      setMensagem("Erro ao carregar metas.");
+      setErro(error.response?.data?.mensagem || "Erro ao carregar metas.");
     }
   }, []);
 
   useEffect(() => {
     carregarMetas();
-
-    buscarPrevisaoMetas()
-      .then((response) => {
-        setPrevisaoIA(response.data);
-      })
-      .catch((error) => {
-        console.error("Erro ao buscar previsão de metas IA:", error);
-      });
   }, [carregarMetas]);
 
-  const atualizarCampo = (campo, valor) => {
-    setNovaMeta({
-      ...novaMeta,
-      [campo]: valor,
-    });
-  };
+  function atualizarCampo(campo, valor) {
+    setNovaMeta((atual) => ({ ...atual, [campo]: valor }));
+  }
 
-  const salvarMeta = async (e) => {
-    e.preventDefault();
+  async function salvarMeta(event) {
+    event.preventDefault();
     setMensagem("");
-
-    const dadosParaBackend = {
-      nome: novaMeta.nome,
-      valorAlvo: Number(novaMeta.valorAlvo),
-      prazoMeses: Number(novaMeta.prazoMeses),
-      valorInicial: Number(novaMeta.valorInicial || 0),
-      prioridade: novaMeta.prioridade,
-      descricao: novaMeta.descricao,
-    };
+    setErro("");
+    setSalvando(true);
 
     try {
-      await cadastrarMeta(dadosParaBackend);
+      const response = await cadastrarMeta({
+        nome: novaMeta.nome.trim(),
+        valorAlvo: Number(novaMeta.valorAlvo),
+        prazoMeses: Number(novaMeta.prazoMeses),
+        valorInicial: Number(novaMeta.valorInicial || 0),
+        prioridade: novaMeta.prioridade,
+        descricao: novaMeta.descricao.trim(),
+      });
 
-      setMensagem("Meta cadastrada com sucesso.");
-
+      setMensagem(response.data?.mensagem || "Meta cadastrada com sucesso.");
       setNovaMeta({
         nome: "",
         valorAlvo: "",
@@ -71,341 +78,269 @@ function Metas() {
         prioridade: "media",
         descricao: "",
       });
-
-      carregarMetas();
+      await carregarMetas();
     } catch (error) {
-      console.error("Erro ao cadastrar meta:", error);
-      setMensagem("Erro ao cadastrar meta.");
+      setErro(error.response?.data?.mensagem || "Erro ao cadastrar meta.");
+    } finally {
+      setSalvando(false);
     }
-  };
+  }
 
-  const removerMeta = async (id) => {
+  async function removerMeta(id) {
     setMensagem("");
+    setErro("");
 
     try {
-      await excluirMeta(id);
-      setMensagem("Meta excluída com sucesso.");
-      carregarMetas();
+      const response = await excluirMeta(id);
+      setMensagem(response.data?.mensagem || "Meta excluída com sucesso.");
+      await carregarMetas();
     } catch (error) {
-      console.error("Erro ao excluir meta:", error);
-      setMensagem("Erro ao excluir meta.");
+      setErro(error.response?.data?.mensagem || "Erro ao excluir meta.");
     }
-  };
-
-  const formatarMoeda = (valor) => {
-    return Number(valor || 0).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-  };
-
-  const calcularProgresso = (valorAtual, valorAlvo) => {
-    if (!valorAlvo || Number(valorAlvo) <= 0) return 0;
-
-    return Math.min((Number(valorAtual || 0) / Number(valorAlvo)) * 100, 100);
-  };
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-8 md:px-12">
       <section className="mb-10">
-        <h1 className="text-3xl font-bold text-slate-900">
-          Metas Financeiras
-        </h1>
-
+        <h1 className="text-3xl font-bold text-slate-900">Metas Financeiras</h1>
         <p className="mt-2 text-lg text-slate-500">
-          Cadastre objetivos financeiros e acompanhe seu progresso.
+          O FinIA verifica cada objetivo considerando também o valor mensal exigido pelas outras metas.
         </p>
       </section>
 
       {mensagem && (
-        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm font-medium text-blue-700">
+        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
           {mensagem}
         </div>
       )}
 
-      <section className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-            <span className="material-symbols-outlined">psychology</span>
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <h2 className="text-xl font-semibold text-slate-900">
-                {previsaoIA?.recurso || "Previsão de Metas"}
-              </h2>
-
-              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600">
-                IA futura
-              </span>
-            </div>
-
-            <p className="text-sm leading-relaxed text-slate-600">
-              {previsaoIA?.mensagem ||
-                "A previsão de metas será calculada futuramente pela IA considerando progresso, histórico e probabilidade de alcance."}
-            </p>
-          </div>
+      {erro && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {erro}
         </div>
-      </section>
+      )}
 
-      <section className="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <form
-            onSubmit={salvarMeta}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
-            <h2 className="text-xl font-semibold text-slate-900">Nova meta</h2>
+      <section className="grid grid-cols-1 gap-8 xl:grid-cols-[360px_1fr]">
+        <form
+          onSubmit={salvarMeta}
+          className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <h2 className="text-xl font-semibold text-slate-900">Nova meta</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            A viabilidade é calculada antes da meta ser gravada.
+          </p>
 
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-600">
-                  Nome da meta
-                </label>
+          <div className="mt-6 space-y-4">
+            <Campo
+              label="Nome da meta"
+              value={novaMeta.nome}
+              onChange={(valor) => atualizarCampo("nome", valor)}
+              placeholder="Ex: Notebook"
+            />
 
-                <input
-                  type="text"
-                  value={novaMeta.nome}
-                  onChange={(e) => atualizarCampo("nome", e.target.value)}
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600"
-                  placeholder="Ex: Reserva de emergência"
-                />
-              </div>
+            <Campo
+              label="Valor alvo"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={novaMeta.valorAlvo}
+              onChange={(valor) => atualizarCampo("valorAlvo", valor)}
+              placeholder="Ex: 5000"
+            />
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-600">
-                  Valor alvo
-                </label>
+            <Campo
+              label="Valor já guardado"
+              type="number"
+              min="0"
+              step="0.01"
+              required={false}
+              value={novaMeta.valorInicial}
+              onChange={(valor) => atualizarCampo("valorInicial", valor)}
+              placeholder="Ex: 500"
+            />
 
-                <input
-                  type="number"
-                  min="0"
-                  value={novaMeta.valorAlvo}
-                  onChange={(e) => atualizarCampo("valorAlvo", e.target.value)}
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600"
-                  placeholder="Ex: 10000"
-                />
-              </div>
+            <Campo
+              label="Prazo em meses"
+              type="number"
+              min="1"
+              step="1"
+              value={novaMeta.prazoMeses}
+              onChange={(valor) => atualizarCampo("prazoMeses", valor)}
+              placeholder="Ex: 10"
+            />
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-600">
-                  Valor inicial
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  value={novaMeta.valorInicial}
-                  onChange={(e) =>
-                    atualizarCampo("valorInicial", e.target.value)
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600"
-                  placeholder="Ex: 1500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-600">
-                  Prazo em meses
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  value={novaMeta.prazoMeses}
-                  onChange={(e) =>
-                    atualizarCampo("prazoMeses", e.target.value)
-                  }
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600"
-                  placeholder="Ex: 12"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-600">
-                  Prioridade
-                </label>
-
-                <select
-                  value={novaMeta.prioridade}
-                  onChange={(e) => atualizarCampo("prioridade", e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600"
-                >
-                  <option value="baixa">Baixa</option>
-                  <option value="media">Média</option>
-                  <option value="alta">Alta</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-600">
-                  Descrição
-                </label>
-
-                <textarea
-                  value={novaMeta.descricao}
-                  onChange={(e) => atualizarCampo("descricao", e.target.value)}
-                  rows="3"
-                  className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600"
-                  placeholder="Descreva o objetivo da meta"
-                ></textarea>
-              </div>
-
-              <button className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700">
-                Cadastrar meta
-              </button>
-            </div>
-          </form>
-        </div>
-
-        <div className="lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">
-                Metas cadastradas
-              </h2>
+              <label className="mb-2 block text-sm font-medium text-slate-600">
+                Prioridade
+              </label>
+              <select
+                value={novaMeta.prioridade}
+                onChange={(event) => atualizarCampo("prioridade", event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-600"
+              >
+                <option value="baixa">Baixa</option>
+                <option value="media">Média</option>
+                <option value="alta">Alta</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-600">
+                Descrição
+              </label>
+              <textarea
+                rows="3"
+                maxLength="255"
+                value={novaMeta.descricao}
+                onChange={(event) => atualizarCampo("descricao", event.target.value)}
+                className="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-600"
+                placeholder="Opcional"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={salvando}
+            className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {salvando ? "Analisando..." : "Criar e analisar meta"}
+          </button>
+        </form>
+
+        <section>
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">Metas cadastradas</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Dados carregados diretamente do backend.
+                {metas.length} meta(s) no planejamento atual.
               </p>
             </div>
           </div>
 
           {metas.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-              <span className="material-symbols-outlined text-5xl text-slate-300">
-                flag
-              </span>
-
-              <h3 className="mt-3 text-lg font-semibold text-slate-900">
-                Nenhuma meta cadastrada
-              </h3>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Cadastre sua primeira meta financeira para começar o
-                acompanhamento.
-              </p>
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
+              Nenhuma meta cadastrada.
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-              {metas.map((meta) => {
-                const progresso = calcularProgresso(
-                  meta.valorInicial,
-                  meta.valorAlvo
-                );
-
-                const valorFaltante =
-                  Number(meta.valorAlvo || 0) - Number(meta.valorInicial || 0);
-
-                return (
-                  <div
-                    key={meta.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1"
-                  >
-                    <div className="mb-5 flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900">
-                          {meta.nome}
-                        </h3>
-
-                        <p className="mt-1 text-sm text-slate-500">
-                          Prazo: {meta.prazoMeses} meses
-                        </p>
-                      </div>
-
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100">
-                        <span className="material-symbols-outlined text-blue-600">
-                          flag
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Progresso</span>
-                        <span className="font-semibold text-blue-600">
-                          {progresso.toFixed(0)}%
-                        </span>
-                      </div>
-
-                      <div className="h-3 w-full rounded-full bg-slate-100">
-                        <div
-                          className="h-3 rounded-full bg-blue-600"
-                          style={{ width: `${progresso}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 border-t border-slate-100 pt-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Valor inicial</span>
-                        <span className="font-semibold text-slate-900">
-                          {formatarMoeda(meta.valorInicial)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Valor alvo</span>
-                        <span className="font-semibold text-slate-900">
-                          {formatarMoeda(meta.valorAlvo)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Falta atingir</span>
-                        <span className="font-semibold text-red-500">
-                          {formatarMoeda(valorFaltante)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Prioridade</span>
-                        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-600">
-                          {meta.prioridade || "Não informada"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {meta.descricao && (
-                      <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-500">
-                        {meta.descricao}
-                      </p>
-                    )}
-
-                    <div className="mt-5 rounded-xl bg-slate-50 p-4">
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-blue-600">
-                          auto_awesome
-                        </span>
-                        <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                          IA futura
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-slate-500">
-                        Futuramente, a IA do FinIA calculará a probabilidade de
-                        alcançar esta meta no prazo e sugerirá ajustes
-                        personalizados.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => removerMeta(meta.id)}
-                      className="mt-5 w-full rounded-xl border border-red-100 px-5 py-3 font-semibold text-red-500 transition hover:bg-red-50"
-                    >
-                      Excluir meta
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              {metas.map((meta) => (
+                <MetaCard
+                  key={meta.id}
+                  meta={meta}
+                  analise={analises[meta.id]}
+                  onExcluir={() => removerMeta(meta.id)}
+                />
+              ))}
             </div>
           )}
-        </div>
+        </section>
       </section>
     </main>
   );
+}
+
+function Campo({
+  label,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+  min,
+  step,
+  required = true,
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium text-slate-600">{label}</label>
+      <input
+        type={type}
+        value={value}
+        min={min}
+        step={step}
+        required={required}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-600"
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+function MetaCard({ meta, analise, onExcluir }) {
+  const progresso = meta.valorAlvo > 0
+    ? Math.min((Number(meta.valorInicial || 0) / Number(meta.valorAlvo)) * 100, 100)
+    : 0;
+
+  const classe = analise?.classificacao || "ANALISANDO";
+  const estilo = classe.includes("INVIAVEL")
+    ? "bg-red-50 text-red-700"
+    : classe.includes("ATENCAO")
+    ? "bg-amber-50 text-amber-700"
+    : "bg-emerald-50 text-emerald-700";
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900">{meta.nome}</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            {formatarMoeda(meta.valorInicial)} de {formatarMoeda(meta.valorAlvo)}
+          </p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${estilo}`}>
+          {classe.replaceAll("_", " ")}
+        </span>
+      </div>
+
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-blue-600" style={{ width: `${progresso}%` }} />
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+        <Info label="Prazo" value={`${meta.prazoMeses} meses`} />
+        <Info label="Prioridade" value={meta.prioridade} />
+        <Info
+          label="Necessário/mês"
+          value={analise ? formatarMoeda(analise.valorMensalNecessario) : "..."}
+        />
+        <Info
+          label="Margem disponível"
+          value={analise ? formatarMoeda(analise.margemDisponivelParaMeta) : "..."}
+        />
+      </div>
+
+      {analise?.mensagem && (
+        <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
+          {analise.mensagem}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={onExcluir}
+        className="mt-5 text-sm font-semibold text-red-600 hover:text-red-700"
+      >
+        Excluir meta
+      </button>
+    </article>
+  );
+}
+
+function Info({ label, value }) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="mt-1 font-semibold text-slate-700">{value}</p>
+    </div>
+  );
+}
+
+function formatarMoeda(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 export default Metas;
