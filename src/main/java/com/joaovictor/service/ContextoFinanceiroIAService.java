@@ -4,9 +4,11 @@ import com.joaovictor.model.ContextoFinanceiroIA;
 import com.joaovictor.model.Meta;
 import com.joaovictor.model.ResumoFinanceiro;
 import com.joaovictor.model.SituacaoFinanceira;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class ContextoFinanceiroIAService {
 
     private final SituacaoFinanceiraService situacaoService;
@@ -39,6 +41,8 @@ public class ContextoFinanceiroIAService {
 
         texto.append("SITUAÇÃO FINANCEIRA ATUAL:\n")
                 .append("Classificação: ").append(s.getClassificacao()).append('\n')
+                .append("Renda mensal: R$ ").append(s.getRendaMensal()).append('\n')
+                .append("Renda extra: R$ ").append(s.getRendaExtra()).append('\n')
                 .append("Renda total: R$ ").append(s.getRendaTotal()).append('\n')
                 .append("Despesas planejadas: R$ ").append(s.getDespesasPlanejadas()).append('\n')
                 .append("Valor planejado para guardar: R$ ").append(s.getValorPlanejadoGuardar()).append('\n')
@@ -59,17 +63,26 @@ public class ContextoFinanceiroIAService {
             texto.append("Nenhuma meta cadastrada.\n");
         } else {
             for (Meta meta : contexto.getMetas()) {
+                AnaliseMeta analise = new AnaliseMetaService().analisar(meta);
                 texto.append("- ").append(meta.getNome())
                         .append(" | alvo: R$ ").append(meta.getValorAlvo())
                         .append(" | inicial: R$ ").append(meta.getValorInicial())
                         .append(" | prazo: ").append(meta.getPrazoMeses()).append(" meses")
-                        .append(" | prioridade: ").append(meta.getPrioridade()).append('\n');
+                        .append(" | prioridade: ").append(meta.getPrioridade())
+                        .append(" | classificação: ").append(analise.getClassificacao())
+                        .append(" | necessário/mês: R$ ").append(analise.getValorMensalNecessario())
+                        .append(" | viável: ").append(analise.isViavel())
+                        .append('\n');
             }
         }
 
         texto.append("\nSUGESTÕES DO SISTEMA:\n");
-        for (String sugestao : contexto.getSugestoes()) {
-            texto.append("- ").append(sugestao).append('\n');
+        if (contexto.getSugestoes().isEmpty()) {
+            texto.append("Nenhuma sugestão automática no momento.\n");
+        } else {
+            for (String sugestao : contexto.getSugestoes()) {
+                texto.append("- ").append(sugestao).append('\n');
+            }
         }
 
         return texto.toString();
