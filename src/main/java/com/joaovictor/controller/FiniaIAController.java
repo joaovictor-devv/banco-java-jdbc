@@ -17,9 +17,35 @@ public class FiniaIAController {
         this.service = service;
     }
 
-    @PostMapping("/analisar")
-    public ResponseEntity<Map<String, String>> analisar(@RequestBody AnaliseIARequest request) {
+    @PostMapping("/perguntar")
+    public ResponseEntity<Map<String, Object>> perguntar(@RequestBody AnaliseIARequest request) {
         String resposta = service.analisar(request);
-        return ResponseEntity.ok(Map.of("resposta", resposta));
+        return ResponseEntity.ok(Map.of(
+                "sucesso", true,
+                "resposta", resposta
+        ));
+    }
+
+    @PostMapping("/analisar")
+    public ResponseEntity<Map<String, Object>> analisar(@RequestBody AnaliseIARequest request) {
+        String resposta = service.analisar(request);
+        return ResponseEntity.ok(Map.of(
+                "sucesso", true,
+                "resposta", resposta
+        ));
+    }
+
+    @GetMapping("/analisar")
+    public ResponseEntity<Map<String, Object>> analisarAutomaticamente() {
+        AnaliseIARequest request = new AnaliseIARequest();
+        request.setPergunta("Faça uma análise geral da minha situação financeira atual. " +
+                "Mostre os principais pontos positivos, riscos, metas que exigem atenção " +
+                "e as ações mais importantes que eu deveria considerar agora.");
+
+        String resposta = service.analisar(request);
+        return ResponseEntity.ok(Map.of(
+                "sucesso", true,
+                "resposta", resposta
+        ));
     }
 }
