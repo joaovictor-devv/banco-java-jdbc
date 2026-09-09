@@ -9,12 +9,16 @@ import java.math.BigDecimal;
 
 public class SituacaoFinanceiraService {
 
+    private static final BigDecimal LIMITE_ATENCAO = new BigDecimal("0.80");
+
     private final PerfilFinanceiroRepository perfilRepository;
     private final AnaliseFinanceiraService analiseFinanceiraService;
+    private final CompromissoMetasService compromissoMetasService;
 
     public SituacaoFinanceiraService() {
         this.perfilRepository = new PerfilFinanceiroRepository();
         this.analiseFinanceiraService = new AnaliseFinanceiraService();
+        this.compromissoMetasService = new CompromissoMetasService();
     }
 
     public SituacaoFinanceira analisar() {
@@ -40,10 +44,10 @@ public class SituacaoFinanceiraService {
 
         BigDecimal valorPlanejadoGuardar = valor(perfil.getValorPlanejadoGuardar());
         BigDecimal margemLivre = rendaTotal.subtract(despesasPlanejadas).subtract(valorPlanejadoGuardar);
+        BigDecimal comprometimentoMensalMetas = compromissoMetasService.calcularComprometimentoMensalTotal();
+        BigDecimal margemDisponivelAposMetas = margemLivre.subtract(comprometimentoMensalMetas);
         BigDecimal saldoAtual = valor(perfil.getSaldoAtual());
 
-        // Transações continuam disponíveis como histórico opcional, mas não são
-        // necessárias para o saldo usado nas decisões do FinIA.
         ResumoFinanceiro resumo = analiseFinanceiraService.gerarResumoDoMesAtual();
 
         String classificacao = classificar(
@@ -51,6 +55,7 @@ public class SituacaoFinanceiraService {
                 despesasPlanejadas,
                 valorPlanejadoGuardar,
                 margemLivre,
+                comprometimentoMensalMetas,
                 saldoAtual
         );
 
@@ -61,6 +66,8 @@ public class SituacaoFinanceiraService {
                 despesasPlanejadas,
                 valorPlanejadoGuardar,
                 margemLivre,
+                comprometimentoMensalMetas,
+                margemDisponivelAposMetas,
                 saldoAtual,
                 resumo.getSaldoMes(),
                 resumo.getTotalEntradas(),
@@ -73,6 +80,7 @@ public class SituacaoFinanceiraService {
                                BigDecimal despesasPlanejadas,
                                BigDecimal valorPlanejadoGuardar,
                                BigDecimal margemLivre,
+                               BigDecimal comprometimentoMensalMetas,
                                BigDecimal saldoAtual) {
 
         if (rendaTotal.compareTo(BigDecimal.ZERO) <= 0) {
@@ -93,8 +101,17 @@ public class SituacaoFinanceiraService {
             return "RESERVA_INVIAVEL";
         }
 
+        if (comprometimentoMensalMetas.compareTo(margemLivre) > 0) {
+            return "METAS_ACIMA_DA_CAPACIDADE";
+        }
+
         if (margemLivre.compareTo(BigDecimal.ZERO) == 0) {
             return "EQUILIBRADA";
+        }
+
+        if (comprometimentoMensalMetas.compareTo(BigDecimal.ZERO) > 0
+                && comprometimentoMensalMetas.compareTo(margemLivre.multiply(LIMITE_ATENCAO)) > 0) {
+            return "APERTADA_POR_METAS";
         }
 
         return "SAUDAVEL";
