@@ -13,12 +13,32 @@ jobs:
     name: Backend Java
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: "%"
+          MYSQL_DATABASE: banco_app
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/banco_app?useSSL=false&serverTimezone=America/Sao_Paulo&allowPublicKeyRetrieval=true
+      DB_USER: root
+      DB_PASSWORD: root
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configurar Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -26,6 +46,70 @@ jobs:
 
       - name: Compilar e testar backend
         run: mvn -B verify
+
+      - name: Preparar schema MySQL
+        run: |
+          docker run --rm --network host -i mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot < database/schema.sql
+
+      - name: Smoke test da API real
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          java -jar target/finia-1.0-SNAPSHOT.jar > /tmp/finia.log 2>&1 &
+          APP_PID=$!
+          trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for tentativa in {1..30}; do
+            if curl -s -o /dev/null http://localhost:8080/perfil-financeiro; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            cat /tmp/finia.log
+            exit 1
+          fi
+
+          curl -fsS -X PUT http://localhost:8080/perfil-financeiro \
+            -H 'Content-Type: application/json' \
+            -d '{"nome":"Teste CI","saldoAtual":1200}' \
+            | jq -e '.nome == "Teste CI" and .saldoAtual == 1200'
+
+          curl -fsS -X PUT http://localhost:8080/orcamento \
+            -H 'Content-Type: application/json' \
+            -d '{"rendaMensal":2500,"gastosMensais":1300,"valorPlanejadoGuardar":300}' \
+            | jq -e '.rendaMensal == 2500 and .gastosMensais == 1300 and .margemAntesMetas == 900'
+
+          curl -fsS -X POST http://localhost:8080/metas \
+            -H 'Content-Type: application/json' \
+            -d '{"nome":"Notebook","valorAlvo":5000,"prazoMeses":10,"valorInicial":1000,"prioridade":"alta","descricao":"Meta do teste CI"}' \
+            | jq -e '.analise.classificacao == "VIAVEL"'
+
+          curl -fsS http://localhost:8080/analise/capacidade-gastos \
+            | jq -e '.margemAposMetas == 500 and .capacidadeGastoImediato == 500'
+
+          curl -fsS -X POST http://localhost:8080/analise/simular-gasto \
+            -H 'Content-Type: application/json' \
+            -d '{"valor":450}' \
+            | jq -e '.classificacao == "ATENCAO" and .recomendado == true'
+
+          curl -fsS -X POST http://localhost:8080/simulacoes \
+            -H 'Content-Type: application/json' \
+            -d '{"nomeCenario":"Teste CI","meses":3,"eventos":[{"mes":2,"tipo":"GASTO_EXTRAORDINARIO","valor":600}]}' \
+            | jq -e '.saldoFinalProjetado == 2100 and .totalGastosExtraordinarios == 600 and .projecoesMetas[0].valorProjetado == 2200'
+
+          STATUS_INVIAVEL=$(curl -sS -o /tmp/meta-inviavel.json -w '%{http_code}' \
+            -X POST http://localhost:8080/metas \
+            -H 'Content-Type: application/json' \
+            -d '{"nome":"Meta impossível","valorAlvo":10000,"prazoMeses":1,"valorInicial":0,"prioridade":"media"}')
+
+          test "$STATUS_INVIAVEL" = "422"
+          jq -e '.analise.classificacao == "INVIAVEL"' /tmp/meta-inviavel.json
 
   frontend:
     name: Frontend React
