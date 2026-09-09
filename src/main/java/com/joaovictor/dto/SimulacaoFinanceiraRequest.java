@@ -1,18 +1,18 @@
 package com.joaovictor.dto;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SimulacaoFinanceiraRequest {
 
     private String nomeCenario;
     private Integer meses;
     private BigDecimal rendaMensal;
-    private BigDecimal rendaExtraMensal;
     private BigDecimal gastosMensais;
-    private BigDecimal gastoExtraordinario;
-    private Integer mesGastoExtraordinario;
     private BigDecimal aporteExtraMetasMensal;
     private Long metaPrioritariaId;
+    private List<EventoSimulacaoRequest> eventos = new ArrayList<>();
 
     public String getNomeCenario() { return nomeCenario; }
     public void setNomeCenario(String nomeCenario) { this.nomeCenario = nomeCenario; }
@@ -23,21 +23,17 @@ public class SimulacaoFinanceiraRequest {
     public BigDecimal getRendaMensal() { return rendaMensal; }
     public void setRendaMensal(BigDecimal rendaMensal) { this.rendaMensal = rendaMensal; }
 
-    public BigDecimal getRendaExtraMensal() { return rendaExtraMensal; }
-    public void setRendaExtraMensal(BigDecimal rendaExtraMensal) { this.rendaExtraMensal = rendaExtraMensal; }
-
     public BigDecimal getGastosMensais() { return gastosMensais; }
     public void setGastosMensais(BigDecimal gastosMensais) { this.gastosMensais = gastosMensais; }
-
-    public BigDecimal getGastoExtraordinario() { return gastoExtraordinario; }
-    public void setGastoExtraordinario(BigDecimal gastoExtraordinario) { this.gastoExtraordinario = gastoExtraordinario; }
-
-    public Integer getMesGastoExtraordinario() { return mesGastoExtraordinario; }
-    public void setMesGastoExtraordinario(Integer mesGastoExtraordinario) { this.mesGastoExtraordinario = mesGastoExtraordinario; }
 
     public BigDecimal getAporteExtraMetasMensal() { return aporteExtraMetasMensal; }
     public void setAporteExtraMetasMensal(BigDecimal aporteExtraMetasMensal) { this.aporteExtraMetasMensal = aporteExtraMetasMensal; }
 
     public Long getMetaPrioritariaId() { return metaPrioritariaId; }
     public void setMetaPrioritariaId(Long metaPrioritariaId) { this.metaPrioritariaId = metaPrioritariaId; }
+
+    public List<EventoSimulacaoRequest> getEventos() { return eventos; }
+    public void setEventos(List<EventoSimulacaoRequest> eventos) {
+        this.eventos = eventos != null ? eventos : new ArrayList<>();
+    }
 }
