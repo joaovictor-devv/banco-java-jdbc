@@ -13,19 +13,12 @@ public class PerfilFinanceiroRepository {
     public void salvar(PerfilFinanceiro perfil) {
         String sql = """
                 INSERT INTO perfil_financeiro (
+                    nome,
+                    saldo_atual,
                     renda_mensal,
-                    renda_extra,
-                    gasto_moradia,
-                    gasto_agua,
-                    gasto_energia,
-                    gasto_internet,
-                    gasto_transporte,
-                    gasto_alimentacao,
-                    outras_despesas,
-                    valor_planejado_guardar,
-                    objetivo_principal,
-                    saldo_atual
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    gastos_mensais,
+                    valor_planejado_guardar
+                ) VALUES (?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = Conexao.abrir();
@@ -81,18 +74,11 @@ public class PerfilFinanceiroRepository {
     public void atualizar(long id, PerfilFinanceiro perfil) {
         String sql = """
                 UPDATE perfil_financeiro
-                SET renda_mensal = ?,
-                    renda_extra = ?,
-                    gasto_moradia = ?,
-                    gasto_agua = ?,
-                    gasto_energia = ?,
-                    gasto_internet = ?,
-                    gasto_transporte = ?,
-                    gasto_alimentacao = ?,
-                    outras_despesas = ?,
-                    valor_planejado_guardar = ?,
-                    objetivo_principal = ?,
-                    saldo_atual = ?
+                SET nome = ?,
+                    saldo_atual = ?,
+                    renda_mensal = ?,
+                    gastos_mensais = ?,
+                    valor_planejado_guardar = ?
                 WHERE id = ?
                 """;
 
@@ -100,7 +86,7 @@ public class PerfilFinanceiroRepository {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             preencherStatement(stmt, perfil);
-            stmt.setLong(13, id);
+            stmt.setLong(6, id);
 
             int linhasAfetadas = stmt.executeUpdate();
             if (linhasAfetadas == 0) {
@@ -132,35 +118,21 @@ public class PerfilFinanceiroRepository {
     }
 
     private void preencherStatement(PreparedStatement stmt, PerfilFinanceiro perfil) throws SQLException {
-        stmt.setBigDecimal(1, perfil.getRendaMensal());
-        stmt.setBigDecimal(2, perfil.getRendaExtra());
-        stmt.setBigDecimal(3, perfil.getGastoMoradia());
-        stmt.setBigDecimal(4, perfil.getGastoAgua());
-        stmt.setBigDecimal(5, perfil.getGastoEnergia());
-        stmt.setBigDecimal(6, perfil.getGastoInternet());
-        stmt.setBigDecimal(7, perfil.getGastoTransporte());
-        stmt.setBigDecimal(8, perfil.getGastoAlimentacao());
-        stmt.setBigDecimal(9, perfil.getOutrasDespesas());
-        stmt.setBigDecimal(10, perfil.getValorPlanejadoGuardar());
-        stmt.setString(11, perfil.getObjetivoPrincipal());
-        stmt.setBigDecimal(12, perfil.getSaldoAtual());
+        stmt.setString(1, perfil.getNome());
+        stmt.setBigDecimal(2, perfil.getSaldoAtual());
+        stmt.setBigDecimal(3, perfil.getRendaMensal());
+        stmt.setBigDecimal(4, perfil.getGastosMensais());
+        stmt.setBigDecimal(5, perfil.getValorPlanejadoGuardar());
     }
 
     private PerfilFinanceiro mapearPerfil(ResultSet rs) throws SQLException {
         return new PerfilFinanceiro(
                 rs.getLong("id"),
+                rs.getString("nome"),
+                rs.getBigDecimal("saldo_atual"),
                 rs.getBigDecimal("renda_mensal"),
-                rs.getBigDecimal("renda_extra"),
-                rs.getBigDecimal("gasto_moradia"),
-                rs.getBigDecimal("gasto_agua"),
-                rs.getBigDecimal("gasto_energia"),
-                rs.getBigDecimal("gasto_internet"),
-                rs.getBigDecimal("gasto_transporte"),
-                rs.getBigDecimal("gasto_alimentacao"),
-                rs.getBigDecimal("outras_despesas"),
-                rs.getBigDecimal("valor_planejado_guardar"),
-                rs.getString("objetivo_principal"),
-                rs.getBigDecimal("saldo_atual")
+                rs.getBigDecimal("gastos_mensais"),
+                rs.getBigDecimal("valor_planejado_guardar")
         );
     }
 }
