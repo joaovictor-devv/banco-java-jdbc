@@ -5,58 +5,50 @@ import java.math.BigDecimal;
 public class SituacaoFinanceira {
 
     private final BigDecimal rendaMensal;
-    private final BigDecimal rendaExtra;
-    private final BigDecimal rendaTotal;
-    private final BigDecimal despesasPlanejadas;
+    private final BigDecimal gastosMensais;
     private final BigDecimal valorPlanejadoGuardar;
-    private final BigDecimal margemLivre;
+    private final BigDecimal margemAntesMetas;
     private final BigDecimal comprometimentoMensalMetas;
     private final BigDecimal margemDisponivelAposMetas;
+    private final BigDecimal capacidadeGastoMensal;
+    private final BigDecimal capacidadeGastoImediato;
     private final BigDecimal saldoAtual;
-    private final BigDecimal saldoMesAtual;
-    private final BigDecimal entradasMesAtual;
-    private final BigDecimal saidasMesAtual;
+    private final BigDecimal percentualRendaComprometida;
     private final String classificacao;
 
     public SituacaoFinanceira(BigDecimal rendaMensal,
-                              BigDecimal rendaExtra,
-                              BigDecimal rendaTotal,
-                              BigDecimal despesasPlanejadas,
+                              BigDecimal gastosMensais,
                               BigDecimal valorPlanejadoGuardar,
-                              BigDecimal margemLivre,
+                              BigDecimal margemAntesMetas,
                               BigDecimal comprometimentoMensalMetas,
                               BigDecimal margemDisponivelAposMetas,
+                              BigDecimal capacidadeGastoMensal,
+                              BigDecimal capacidadeGastoImediato,
                               BigDecimal saldoAtual,
-                              BigDecimal saldoMesAtual,
-                              BigDecimal entradasMesAtual,
-                              BigDecimal saidasMesAtual,
+                              BigDecimal percentualRendaComprometida,
                               String classificacao) {
         this.rendaMensal = rendaMensal;
-        this.rendaExtra = rendaExtra;
-        this.rendaTotal = rendaTotal;
-        this.despesasPlanejadas = despesasPlanejadas;
+        this.gastosMensais = gastosMensais;
         this.valorPlanejadoGuardar = valorPlanejadoGuardar;
-        this.margemLivre = margemLivre;
+        this.margemAntesMetas = margemAntesMetas;
         this.comprometimentoMensalMetas = comprometimentoMensalMetas;
         this.margemDisponivelAposMetas = margemDisponivelAposMetas;
+        this.capacidadeGastoMensal = capacidadeGastoMensal;
+        this.capacidadeGastoImediato = capacidadeGastoImediato;
         this.saldoAtual = saldoAtual;
-        this.saldoMesAtual = saldoMesAtual;
-        this.entradasMesAtual = entradasMesAtual;
-        this.saidasMesAtual = saidasMesAtual;
+        this.percentualRendaComprometida = percentualRendaComprometida;
         this.classificacao = classificacao;
     }
 
     public BigDecimal getRendaMensal() { return rendaMensal; }
-    public BigDecimal getRendaExtra() { return rendaExtra; }
-    public BigDecimal getRendaTotal() { return rendaTotal; }
-    public BigDecimal getDespesasPlanejadas() { return despesasPlanejadas; }
+    public BigDecimal getGastosMensais() { return gastosMensais; }
     public BigDecimal getValorPlanejadoGuardar() { return valorPlanejadoGuardar; }
-    public BigDecimal getMargemLivre() { return margemLivre; }
+    public BigDecimal getMargemAntesMetas() { return margemAntesMetas; }
     public BigDecimal getComprometimentoMensalMetas() { return comprometimentoMensalMetas; }
     public BigDecimal getMargemDisponivelAposMetas() { return margemDisponivelAposMetas; }
+    public BigDecimal getCapacidadeGastoMensal() { return capacidadeGastoMensal; }
+    public BigDecimal getCapacidadeGastoImediato() { return capacidadeGastoImediato; }
     public BigDecimal getSaldoAtual() { return saldoAtual; }
-    public BigDecimal getSaldoMesAtual() { return saldoMesAtual; }
-    public BigDecimal getEntradasMesAtual() { return entradasMesAtual; }
-    public BigDecimal getSaidasMesAtual() { return saidasMesAtual; }
+    public BigDecimal getPercentualRendaComprometida() { return percentualRendaComprometida; }
     public String getClassificacao() { return classificacao; }
 }
