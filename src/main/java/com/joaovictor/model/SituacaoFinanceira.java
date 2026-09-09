@@ -10,6 +10,7 @@ public class SituacaoFinanceira {
     private final BigDecimal despesasPlanejadas;
     private final BigDecimal valorPlanejadoGuardar;
     private final BigDecimal margemLivre;
+    private final BigDecimal saldoAtual;
     private final BigDecimal saldoMesAtual;
     private final BigDecimal entradasMesAtual;
     private final BigDecimal saidasMesAtual;
@@ -21,6 +22,7 @@ public class SituacaoFinanceira {
                               BigDecimal despesasPlanejadas,
                               BigDecimal valorPlanejadoGuardar,
                               BigDecimal margemLivre,
+                              BigDecimal saldoAtual,
                               BigDecimal saldoMesAtual,
                               BigDecimal entradasMesAtual,
                               BigDecimal saidasMesAtual,
@@ -31,6 +33,7 @@ public class SituacaoFinanceira {
         this.despesasPlanejadas = despesasPlanejadas;
         this.valorPlanejadoGuardar = valorPlanejadoGuardar;
         this.margemLivre = margemLivre;
+        this.saldoAtual = saldoAtual;
         this.saldoMesAtual = saldoMesAtual;
         this.entradasMesAtual = entradasMesAtual;
         this.saidasMesAtual = saidasMesAtual;
@@ -43,6 +46,7 @@ public class SituacaoFinanceira {
     public BigDecimal getDespesasPlanejadas() { return despesasPlanejadas; }
     public BigDecimal getValorPlanejadoGuardar() { return valorPlanejadoGuardar; }
     public BigDecimal getMargemLivre() { return margemLivre; }
+    public BigDecimal getSaldoAtual() { return saldoAtual; }
     public BigDecimal getSaldoMesAtual() { return saldoMesAtual; }
     public BigDecimal getEntradasMesAtual() { return entradasMesAtual; }
     public BigDecimal getSaidasMesAtual() { return saidasMesAtual; }
