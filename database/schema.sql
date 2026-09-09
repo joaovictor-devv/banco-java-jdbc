@@ -1,13 +1,13 @@
 CREATE DATABASE IF NOT EXISTS banco_app;
 USE banco_app;
 
-CREATE TABLE IF NOT EXISTS transacoes (
+CREATE TABLE IF NOT EXISTS perfil_financeiro (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    tipo VARCHAR(20) NOT NULL,
-    valor DECIMAL(12,2) NOT NULL,
-    descricao VARCHAR(120) NOT NULL,
-    categoria VARCHAR(50) NOT NULL,
-    data_transacao DATE NOT NULL
+    nome VARCHAR(100) NOT NULL DEFAULT 'Usuário',
+    saldo_atual DECIMAL(12,2) NOT NULL DEFAULT 0,
+    renda_mensal DECIMAL(12,2) NOT NULL DEFAULT 0,
+    gastos_mensais DECIMAL(12,2) NOT NULL DEFAULT 0,
+    valor_planejado_guardar DECIMAL(12,2) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS metas (
@@ -15,32 +15,7 @@ CREATE TABLE IF NOT EXISTS metas (
     nome VARCHAR(100) NOT NULL,
     valor_alvo DECIMAL(12,2) NOT NULL,
     prazo_meses INT NOT NULL,
-    valor_inicial DECIMAL(12,2) NOT NULL,
+    valor_inicial DECIMAL(12,2) NOT NULL DEFAULT 0,
     prioridade VARCHAR(30) NOT NULL,
     descricao VARCHAR(255)
-);
-
-CREATE TABLE IF NOT EXISTS perfil_financeiro (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    renda_mensal DECIMAL(12,2) NOT NULL,
-    renda_extra DECIMAL(12,2),
-    gasto_moradia DECIMAL(12,2) NOT NULL,
-    gasto_agua DECIMAL(12,2) NOT NULL,
-    gasto_energia DECIMAL(12,2) NOT NULL,
-    gasto_internet DECIMAL(12,2) NOT NULL,
-    gasto_transporte DECIMAL(12,2) NOT NULL,
-    gasto_alimentacao DECIMAL(12,2) NOT NULL,
-    outras_despesas DECIMAL(12,2),
-    valor_planejado_guardar DECIMAL(12,2) NOT NULL,
-    objetivo_principal VARCHAR(255) NOT NULL,
-    saldo_atual DECIMAL(12,2) NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS revisoes_mensais (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    mes_referencia VARCHAR(30) NOT NULL,
-    gasto_inesperado BOOLEAN NOT NULL,
-    valor_incorreto BOOLEAN NOT NULL,
-    revisar_categorias BOOLEAN NOT NULL,
-    observacoes VARCHAR(500)
 );
