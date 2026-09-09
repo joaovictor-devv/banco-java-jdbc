@@ -1,5 +1,6 @@
 package com.joaovictor.controller;
 
+import com.joaovictor.dto.SimulacaoFinanceiraRequest;
 import com.joaovictor.model.AnaliseIARequest;
 import com.joaovictor.service.FiniaIAService;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +44,16 @@ public class FiniaIAController {
                 "e as ações mais importantes que eu deveria considerar agora.");
 
         String resposta = service.analisar(request);
+        return ResponseEntity.ok(Map.of(
+                "sucesso", true,
+                "resposta", resposta
+        ));
+    }
+
+    @PostMapping("/explicar-simulacao")
+    public ResponseEntity<Map<String, Object>> explicarSimulacao(
+            @RequestBody SimulacaoFinanceiraRequest request) {
+        String resposta = service.explicarSimulacao(request);
         return ResponseEntity.ok(Map.of(
                 "sucesso", true,
                 "resposta", resposta
