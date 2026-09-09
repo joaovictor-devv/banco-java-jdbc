@@ -1,5 +1,6 @@
 package com.joaovictor.service;
 
+import com.joaovictor.exception.RecursoNaoEncontradoException;
 import com.joaovictor.model.Meta;
 import com.joaovictor.repository.MetaRepository;
 
@@ -62,7 +63,7 @@ public class MetaService {
         );
 
         if (!repository.atualizar(id, meta)) {
-            throw new IllegalArgumentException("Meta não encontrada para atualização.");
+            throw new RecursoNaoEncontradoException("Meta não encontrada para atualização.");
         }
 
         return meta;
@@ -80,7 +81,7 @@ public class MetaService {
         }
 
         if (!repository.atualizarValorInicial(id, valorAtual)) {
-            throw new IllegalArgumentException("Meta não encontrada para atualização do progresso.");
+            throw new RecursoNaoEncontradoException("Meta não encontrada para atualização do progresso.");
         }
 
         meta.setValorInicial(valorAtual);
@@ -103,7 +104,7 @@ public class MetaService {
         Meta meta = repository.buscarPorId(id);
 
         if (meta == null) {
-            throw new IllegalArgumentException("Meta não encontrada para o id informado.");
+            throw new RecursoNaoEncontradoException("Meta não encontrada para o id informado.");
         }
 
         return meta;
@@ -113,7 +114,7 @@ public class MetaService {
         boolean excluiu = repository.excluirPorId(id);
 
         if (!excluiu) {
-            throw new IllegalArgumentException("Meta não encontrada para exclusão.");
+            throw new RecursoNaoEncontradoException("Meta não encontrada para exclusão.");
         }
     }
 
