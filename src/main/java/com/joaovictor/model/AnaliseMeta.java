@@ -9,6 +9,9 @@ public class AnaliseMeta {
     private final BigDecimal margemLivre;
     private final BigDecimal comprometimentoOutrasMetas;
     private final BigDecimal margemDisponivelParaMeta;
+    private final BigDecimal percentualMargemComprometida;
+    private final Integer prazoMinimoViavelMeses;
+    private final Integer prazoConfortavelMeses;
     private final boolean viavel;
     private final String classificacao;
     private final String mensagem;
@@ -18,6 +21,9 @@ public class AnaliseMeta {
                        BigDecimal margemLivre,
                        BigDecimal comprometimentoOutrasMetas,
                        BigDecimal margemDisponivelParaMeta,
+                       BigDecimal percentualMargemComprometida,
+                       Integer prazoMinimoViavelMeses,
+                       Integer prazoConfortavelMeses,
                        boolean viavel,
                        String classificacao,
                        String mensagem) {
@@ -26,6 +32,9 @@ public class AnaliseMeta {
         this.margemLivre = margemLivre;
         this.comprometimentoOutrasMetas = comprometimentoOutrasMetas;
         this.margemDisponivelParaMeta = margemDisponivelParaMeta;
+        this.percentualMargemComprometida = percentualMargemComprometida;
+        this.prazoMinimoViavelMeses = prazoMinimoViavelMeses;
+        this.prazoConfortavelMeses = prazoConfortavelMeses;
         this.viavel = viavel;
         this.classificacao = classificacao;
         this.mensagem = mensagem;
@@ -36,6 +45,9 @@ public class AnaliseMeta {
     public BigDecimal getMargemLivre() { return margemLivre; }
     public BigDecimal getComprometimentoOutrasMetas() { return comprometimentoOutrasMetas; }
     public BigDecimal getMargemDisponivelParaMeta() { return margemDisponivelParaMeta; }
+    public BigDecimal getPercentualMargemComprometida() { return percentualMargemComprometida; }
+    public Integer getPrazoMinimoViavelMeses() { return prazoMinimoViavelMeses; }
+    public Integer getPrazoConfortavelMeses() { return prazoConfortavelMeses; }
     public boolean isViavel() { return viavel; }
     public String getClassificacao() { return classificacao; }
     public String getMensagem() { return mensagem; }
