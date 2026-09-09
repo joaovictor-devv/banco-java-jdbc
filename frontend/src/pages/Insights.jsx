@@ -9,6 +9,34 @@ function Insights() {
   const [carregandoAnalise, setCarregandoAnalise] = useState(true);
   const [erro, setErro] = useState("");
 
+  useEffect(() => {
+    let ativo = true;
+
+    analisarIA()
+      .then((response) => {
+        if (ativo) {
+          setAnalise(response.data.resposta || "A IA não retornou uma análise.");
+        }
+      })
+      .catch((error) => {
+        if (ativo) {
+          setErro(
+            error.response?.data?.mensagem ||
+              "Não foi possível carregar a análise da IA. Verifique se o backend está ligado e se a OPENAI_API_KEY foi configurada."
+          );
+        }
+      })
+      .finally(() => {
+        if (ativo) {
+          setCarregandoAnalise(false);
+        }
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
   async function carregarAnalise() {
     setCarregandoAnalise(true);
     setErro("");
@@ -25,10 +53,6 @@ function Insights() {
       setCarregandoAnalise(false);
     }
   }
-
-  useEffect(() => {
-    carregarAnalise();
-  }, []);
 
   async function enviarPergunta(event) {
     event.preventDefault();
@@ -83,7 +107,7 @@ function Insights() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-5 text-sm leading-7 text-slate-700 whitespace-pre-line">
+        <div className="whitespace-pre-line rounded-xl bg-white p-5 text-sm leading-7 text-slate-700">
           {carregandoAnalise
             ? "Analisando sua situação financeira..."
             : analise || "Nenhuma análise disponível."}
@@ -101,9 +125,7 @@ function Insights() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-5">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Pergunte ao FinIA
-          </h2>
+          <h2 className="text-xl font-semibold text-slate-900">Pergunte ao FinIA</h2>
           <p className="mt-1 text-sm text-slate-500">
             Exemplos: “Posso comprar um celular de R$ 2.000?” ou “Minha meta de R$ 5.000 em 6 meses é viável?”
           </p>
@@ -127,7 +149,7 @@ function Insights() {
         </form>
 
         {resposta && (
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-700 whitespace-pre-line">
+          <div className="mt-6 whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-700">
             {resposta}
           </div>
         )}
