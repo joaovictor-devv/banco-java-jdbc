@@ -4,8 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -19,6 +23,42 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> tratarIllegalArgument(IllegalArgumentException e) {
         return resposta(HttpStatus.BAD_REQUEST, "DADOS_INVALIDOS", e.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> tratarJsonInvalido(HttpMessageNotReadableException e) {
+        return resposta(
+                HttpStatus.BAD_REQUEST,
+                "JSON_INVALIDO",
+                "O corpo da requisição está ausente ou possui JSON inválido."
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> tratarParametroInvalido(MethodArgumentTypeMismatchException e) {
+        return resposta(
+                HttpStatus.BAD_REQUEST,
+                "PARAMETRO_INVALIDO",
+                "O parâmetro '" + e.getName() + "' possui um valor inválido."
+        );
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> tratarMetodoNaoSuportado(HttpRequestMethodNotSupportedException e) {
+        return resposta(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "METODO_NAO_PERMITIDO",
+                "O método HTTP utilizado não é permitido para esta rota."
+        );
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> tratarRotaNaoEncontrada(NoResourceFoundException e) {
+        return resposta(
+                HttpStatus.NOT_FOUND,
+                "ROTA_NAO_ENCONTRADA",
+                "A rota solicitada não foi encontrada."
+        );
     }
 
     @ExceptionHandler(IAIndisponivelException.class)
