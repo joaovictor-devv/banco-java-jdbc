@@ -14,7 +14,7 @@ public class MetaService {
         this.repository = new MetaRepository();
     }
 
-    public void cadastrarMeta(BigDecimal valorAlvo,
+    public Meta cadastrarMeta(BigDecimal valorAlvo,
                               String nome,
                               Integer prazoMeses,
                               BigDecimal valorInicial,
@@ -32,7 +32,9 @@ public class MetaService {
                 descricao
         );
 
-        repository.salvar(meta);
+        long id = repository.salvar(meta);
+        meta.setId(id);
+        return meta;
     }
 
     public List<Meta> listarMetas() {
