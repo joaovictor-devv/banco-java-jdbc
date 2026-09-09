@@ -22,8 +22,9 @@ public class PerfilFinanceiroRepository {
                     gasto_alimentacao,
                     outras_despesas,
                     valor_planejado_guardar,
-                    objetivo_principal
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    objetivo_principal,
+                    saldo_atual
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = Conexao.abrir();
@@ -38,11 +39,7 @@ public class PerfilFinanceiroRepository {
     }
 
     public PerfilFinanceiro buscarPorId(long id) {
-        String sql = """
-                SELECT *
-                FROM perfil_financeiro
-                WHERE id = ?
-                """;
+        String sql = "SELECT * FROM perfil_financeiro WHERE id = ?";
 
         try (Connection conn = Conexao.abrir();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -63,12 +60,7 @@ public class PerfilFinanceiroRepository {
     }
 
     public PerfilFinanceiro buscarUltimoPerfil() {
-        String sql = """
-                SELECT *
-                FROM perfil_financeiro
-                ORDER BY id DESC
-                LIMIT 1
-                """;
+        String sql = "SELECT * FROM perfil_financeiro ORDER BY id DESC LIMIT 1";
 
         try (Connection conn = Conexao.abrir();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -98,7 +90,8 @@ public class PerfilFinanceiroRepository {
                     gasto_alimentacao = ?,
                     outras_despesas = ?,
                     valor_planejado_guardar = ?,
-                    objetivo_principal = ?
+                    objetivo_principal = ?,
+                    saldo_atual = ?
                 WHERE id = ?
                 """;
 
@@ -106,9 +99,12 @@ public class PerfilFinanceiroRepository {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             preencherStatement(stmt, perfil);
-            stmt.setLong(12, id);
+            stmt.setLong(13, id);
 
-            stmt.executeUpdate();
+            int linhasAfetadas = stmt.executeUpdate();
+            if (linhasAfetadas == 0) {
+                throw new IllegalArgumentException("Perfil financeiro não encontrado para atualização.");
+            }
 
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao atualizar perfil financeiro.", e);
@@ -127,6 +123,7 @@ public class PerfilFinanceiroRepository {
         stmt.setBigDecimal(9, perfil.getOutrasDespesas());
         stmt.setBigDecimal(10, perfil.getValorPlanejadoGuardar());
         stmt.setString(11, perfil.getObjetivoPrincipal());
+        stmt.setBigDecimal(12, perfil.getSaldoAtual());
     }
 
     private PerfilFinanceiro mapearPerfil(ResultSet rs) throws SQLException {
@@ -142,7 +139,8 @@ public class PerfilFinanceiroRepository {
                 rs.getBigDecimal("gasto_alimentacao"),
                 rs.getBigDecimal("outras_despesas"),
                 rs.getBigDecimal("valor_planejado_guardar"),
-                rs.getString("objetivo_principal")
+                rs.getString("objetivo_principal"),
+                rs.getBigDecimal("saldo_atual")
         );
     }
 }
