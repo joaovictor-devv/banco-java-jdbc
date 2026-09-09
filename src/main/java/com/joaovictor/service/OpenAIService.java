@@ -10,22 +10,24 @@ import com.openai.models.responses.ResponseCreateParams;
 public class OpenAIService {
 
     private final ContextoFinanceiroIAService contextoService;
-    private final OpenAIClient client;
+    private OpenAIClient client;
 
     public OpenAIService() {
         this.contextoService = new ContextoFinanceiroIAService();
-        String apiKey = System.getenv("OPENAI_API_KEY");
-
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("A variável de ambiente OPENAI_API_KEY não foi configurada.");
-        }
-
-        this.client = OpenAIOkHttpClient.fromEnv();
     }
 
     public RespostaIA perguntar(String pergunta) {
         if (pergunta == null || pergunta.isBlank()) {
             throw new IllegalArgumentException("A pergunta é obrigatória.");
+        }
+
+        String apiKey = System.getenv("OPENAI_API_KEY");
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("A variável de ambiente OPENAI_API_KEY não foi configurada.");
+        }
+
+        if (client == null) {
+            client = OpenAIOkHttpClient.fromEnv();
         }
 
         String contexto = contextoService.montarTexto();
