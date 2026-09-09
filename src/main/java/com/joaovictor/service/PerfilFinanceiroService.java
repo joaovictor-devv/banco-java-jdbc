@@ -1,5 +1,6 @@
 package com.joaovictor.service;
 
+import com.joaovictor.exception.RecursoNaoEncontradoException;
 import com.joaovictor.model.PerfilFinanceiro;
 import com.joaovictor.repository.PerfilFinanceiroRepository;
 
@@ -38,7 +39,7 @@ public class PerfilFinanceiroService {
         PerfilFinanceiro perfil = repository.buscarUltimoPerfil();
 
         if (perfil == null) {
-            throw new IllegalArgumentException("Nenhum perfil financeiro foi cadastrado ainda.");
+            throw new RecursoNaoEncontradoException("Nenhum perfil financeiro foi cadastrado ainda.");
         }
 
         return perfil;
