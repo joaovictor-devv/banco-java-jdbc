@@ -1,12 +1,14 @@
 package com.joaovictor.model;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class ProjecaoMensal {
 
     private final int indiceMes;
     private final String mesReferencia;
-    private final BigDecimal rendaTotal;
+    private final BigDecimal rendaMensal;
+    private final BigDecimal rendaExtraordinaria;
     private final BigDecimal gastosMensais;
     private final BigDecimal reservaPlanejada;
     private final BigDecimal aporteMetasBase;
@@ -15,10 +17,12 @@ public class ProjecaoMensal {
     private final BigDecimal margemMensal;
     private final BigDecimal saldoDisponivelProjetado;
     private final String classificacao;
+    private final List<String> eventosAplicados;
 
     public ProjecaoMensal(int indiceMes,
                           String mesReferencia,
-                          BigDecimal rendaTotal,
+                          BigDecimal rendaMensal,
+                          BigDecimal rendaExtraordinaria,
                           BigDecimal gastosMensais,
                           BigDecimal reservaPlanejada,
                           BigDecimal aporteMetasBase,
@@ -26,10 +30,12 @@ public class ProjecaoMensal {
                           BigDecimal gastoExtraordinario,
                           BigDecimal margemMensal,
                           BigDecimal saldoDisponivelProjetado,
-                          String classificacao) {
+                          String classificacao,
+                          List<String> eventosAplicados) {
         this.indiceMes = indiceMes;
         this.mesReferencia = mesReferencia;
-        this.rendaTotal = rendaTotal;
+        this.rendaMensal = rendaMensal;
+        this.rendaExtraordinaria = rendaExtraordinaria;
         this.gastosMensais = gastosMensais;
         this.reservaPlanejada = reservaPlanejada;
         this.aporteMetasBase = aporteMetasBase;
@@ -38,11 +44,13 @@ public class ProjecaoMensal {
         this.margemMensal = margemMensal;
         this.saldoDisponivelProjetado = saldoDisponivelProjetado;
         this.classificacao = classificacao;
+        this.eventosAplicados = eventosAplicados;
     }
 
     public int getIndiceMes() { return indiceMes; }
     public String getMesReferencia() { return mesReferencia; }
-    public BigDecimal getRendaTotal() { return rendaTotal; }
+    public BigDecimal getRendaMensal() { return rendaMensal; }
+    public BigDecimal getRendaExtraordinaria() { return rendaExtraordinaria; }
     public BigDecimal getGastosMensais() { return gastosMensais; }
     public BigDecimal getReservaPlanejada() { return reservaPlanejada; }
     public BigDecimal getAporteMetasBase() { return aporteMetasBase; }
@@ -51,4 +59,5 @@ public class ProjecaoMensal {
     public BigDecimal getMargemMensal() { return margemMensal; }
     public BigDecimal getSaldoDisponivelProjetado() { return saldoDisponivelProjetado; }
     public String getClassificacao() { return classificacao; }
+    public List<String> getEventosAplicados() { return eventosAplicados; }
 }
