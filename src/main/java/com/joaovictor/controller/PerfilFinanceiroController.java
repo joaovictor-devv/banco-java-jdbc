@@ -2,6 +2,7 @@ package com.joaovictor.controller;
 
 import com.joaovictor.dto.ApiResponse;
 import com.joaovictor.dto.PerfilFinanceiroRequest;
+import com.joaovictor.dto.SaldoAtualRequest;
 import com.joaovictor.model.PerfilFinanceiro;
 import com.joaovictor.model.SituacaoFinanceira;
 import com.joaovictor.service.PerfilFinanceiroService;
@@ -46,6 +47,14 @@ public class PerfilFinanceiroController {
     @GetMapping("/situacao")
     public ResponseEntity<SituacaoFinanceira> situacao() {
         return ResponseEntity.ok(situacaoService.analisar());
+    }
+
+    @PutMapping("/saldo")
+    public ResponseEntity<PerfilFinanceiro> atualizarSaldo(@RequestBody SaldoAtualRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("O saldo atual é obrigatório.");
+        }
+        return ResponseEntity.ok(service.atualizarSaldoAtual(request.getSaldoAtual()));
     }
 
     @GetMapping("/{id}")
