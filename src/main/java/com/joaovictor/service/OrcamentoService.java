@@ -14,8 +14,13 @@ public class OrcamentoService {
     private final MotorFinanceiroService motorFinanceiroService;
 
     public OrcamentoService() {
-        this.perfilRepository = new PerfilFinanceiroRepository();
-        this.motorFinanceiroService = new MotorFinanceiroService();
+        this(new PerfilFinanceiroRepository(), new MotorFinanceiroService());
+    }
+
+    public OrcamentoService(PerfilFinanceiroRepository perfilRepository,
+                            MotorFinanceiroService motorFinanceiroService) {
+        this.perfilRepository = perfilRepository;
+        this.motorFinanceiroService = motorFinanceiroService;
     }
 
     public OrcamentoResumo buscarResumo() {
