@@ -4,14 +4,17 @@ import {
   cadastrarMeta,
   excluirMeta,
   listarMetas,
+  simularMeta,
 } from "../services/metaService";
 
 function Metas() {
   const [metas, setMetas] = useState([]);
   const [analises, setAnalises] = useState({});
+  const [simulacao, setSimulacao] = useState(null);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [simulando, setSimulando] = useState(false);
 
   const [novaMeta, setNovaMeta] = useState({
     nome: "",
@@ -51,6 +54,45 @@ function Metas() {
 
   function atualizarCampo(campo, valor) {
     setNovaMeta((atual) => ({ ...atual, [campo]: valor }));
+    setSimulacao(null);
+  }
+
+  function dadosDaMeta() {
+    return {
+      nome: novaMeta.nome.trim(),
+      valorAlvo: Number(novaMeta.valorAlvo),
+      prazoMeses: Number(novaMeta.prazoMeses),
+      valorInicial: Number(novaMeta.valorInicial || 0),
+      prioridade: novaMeta.prioridade,
+      descricao: novaMeta.descricao.trim(),
+    };
+  }
+
+  async function executarSimulacao() {
+    setMensagem("");
+    setErro("");
+    setSimulacao(null);
+
+    if (!novaMeta.valorAlvo || Number(novaMeta.valorAlvo) <= 0) {
+      setErro("Informe um valor alvo maior que zero para simular a meta.");
+      return;
+    }
+
+    if (!novaMeta.prazoMeses || Number(novaMeta.prazoMeses) <= 0) {
+      setErro("Informe um prazo maior que zero para simular a meta.");
+      return;
+    }
+
+    setSimulando(true);
+
+    try {
+      const response = await simularMeta(dadosDaMeta());
+      setSimulacao(response.data);
+    } catch (error) {
+      setErro(error.response?.data?.mensagem || "Erro ao simular meta.");
+    } finally {
+      setSimulando(false);
+    }
   }
 
   async function salvarMeta(event) {
@@ -60,16 +102,10 @@ function Metas() {
     setSalvando(true);
 
     try {
-      const response = await cadastrarMeta({
-        nome: novaMeta.nome.trim(),
-        valorAlvo: Number(novaMeta.valorAlvo),
-        prazoMeses: Number(novaMeta.prazoMeses),
-        valorInicial: Number(novaMeta.valorInicial || 0),
-        prioridade: novaMeta.prioridade,
-        descricao: novaMeta.descricao.trim(),
-      });
+      const response = await cadastrarMeta(dadosDaMeta());
 
       setMensagem(response.data?.mensagem || "Meta cadastrada com sucesso.");
+      setSimulacao(null);
       setNovaMeta({
         nome: "",
         valorAlvo: "",
@@ -120,14 +156,14 @@ function Metas() {
         </div>
       )}
 
-      <section className="grid grid-cols-1 gap-8 xl:grid-cols-[360px_1fr]">
+      <section className="grid grid-cols-1 gap-8 xl:grid-cols-[380px_1fr]">
         <form
           onSubmit={salvarMeta}
           className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
         >
           <h2 className="text-xl font-semibold text-slate-900">Nova meta</h2>
           <p className="mt-1 text-sm text-slate-500">
-            A viabilidade é calculada antes da meta ser gravada.
+            Você pode simular a viabilidade antes de gravar a meta.
           </p>
 
           <div className="mt-6 space-y-4">
@@ -200,11 +236,22 @@ function Metas() {
           </div>
 
           <button
-            type="submit"
-            disabled={salvando}
-            className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            type="button"
+            onClick={executarSimulacao}
+            disabled={simulando || salvando}
+            className="mt-6 w-full rounded-xl border border-blue-600 px-5 py-3 font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-50"
           >
-            {salvando ? "Analisando..." : "Criar e analisar meta"}
+            {simulando ? "Simulando..." : "Simular antes de criar"}
+          </button>
+
+          {simulacao && <ResultadoSimulacao analise={simulacao} />}
+
+          <button
+            type="submit"
+            disabled={salvando || simulando}
+            className="mt-3 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {salvando ? "Criando..." : "Criar meta"}
           </button>
         </form>
 
@@ -237,6 +284,34 @@ function Metas() {
         </section>
       </section>
     </main>
+  );
+}
+
+function ResultadoSimulacao({ analise }) {
+  const classe = analise.classificacao || "ANALISANDO";
+  const estilo = classe.includes("INVIAVEL")
+    ? "border-red-200 bg-red-50 text-red-700"
+    : classe.includes("ATENCAO")
+    ? "border-amber-200 bg-amber-50 text-amber-700"
+    : "border-emerald-200 bg-emerald-50 text-emerald-700";
+
+  return (
+    <div className={`mt-4 rounded-xl border p-4 ${estilo}`}>
+      <p className="text-xs font-bold uppercase tracking-wide">
+        {classe.replaceAll("_", " ")}
+      </p>
+      <p className="mt-2 text-sm leading-relaxed">{analise.mensagem}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <span className="opacity-70">Necessário/mês</span>
+          <strong className="mt-1 block">{formatarMoeda(analise.valorMensalNecessario)}</strong>
+        </div>
+        <div>
+          <span className="opacity-70">Margem disponível</span>
+          <strong className="mt-1 block">{formatarMoeda(analise.margemDisponivelParaMeta)}</strong>
+        </div>
+      </div>
+    </div>
   );
 }
 
