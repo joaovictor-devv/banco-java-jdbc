@@ -2,13 +2,21 @@ package com.joaovictor.service;
 
 import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.SituacaoFinanceira;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+@Service
 public class SituacaoFinanceiraService {
 
     private final MotorFinanceiroService motorFinanceiroService;
 
     public SituacaoFinanceiraService() {
-        this.motorFinanceiroService = new MotorFinanceiroService();
+        this(new MotorFinanceiroService());
+    }
+
+    @Autowired
+    public SituacaoFinanceiraService(MotorFinanceiroService motorFinanceiroService) {
+        this.motorFinanceiroService = motorFinanceiroService;
     }
 
     public SituacaoFinanceira analisar() {
