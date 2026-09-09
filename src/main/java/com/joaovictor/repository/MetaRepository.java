@@ -2,6 +2,7 @@ package com.joaovictor.repository;
 
 import com.joaovictor.model.Meta;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,6 +86,49 @@ public class MetaRepository {
 
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao buscar meta por id.", e);
+        }
+    }
+
+    public boolean atualizar(long id, Meta meta) {
+        String sql = """
+                UPDATE metas
+                SET nome = ?,
+                    valor_alvo = ?,
+                    prazo_meses = ?,
+                    valor_inicial = ?,
+                    prioridade = ?,
+                    descricao = ?
+                WHERE id = ?
+                """;
+
+        try (Connection conn = Conexao.abrir();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, meta.getNome());
+            stmt.setBigDecimal(2, meta.getValorAlvo());
+            stmt.setInt(3, meta.getPrazoMeses());
+            stmt.setBigDecimal(4, meta.getValorInicial());
+            stmt.setString(5, meta.getPrioridade());
+            stmt.setString(6, meta.getDescricao());
+            stmt.setLong(7, id);
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao atualizar meta.", e);
+        }
+    }
+
+    public boolean atualizarValorInicial(long id, BigDecimal valorAtual) {
+        String sql = "UPDATE metas SET valor_inicial = ? WHERE id = ?";
+
+        try (Connection conn = Conexao.abrir();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setBigDecimal(1, valorAtual);
+            stmt.setLong(2, id);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao atualizar progresso da meta.", e);
         }
     }
 
