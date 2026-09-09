@@ -3,12 +3,15 @@ package com.joaovictor.service;
 import com.joaovictor.exception.RecursoNaoEncontradoException;
 import com.joaovictor.model.Meta;
 import com.joaovictor.repository.MetaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+@Service
 public class MetaService {
 
     private static final Set<String> PRIORIDADES_VALIDAS = Set.of("baixa", "media", "alta");
@@ -16,7 +19,12 @@ public class MetaService {
     private final MetaRepository repository;
 
     public MetaService() {
-        this.repository = new MetaRepository();
+        this(new MetaRepository());
+    }
+
+    @Autowired
+    public MetaService(MetaRepository repository) {
+        this.repository = repository;
     }
 
     public Meta cadastrarMeta(BigDecimal valorAlvo,
