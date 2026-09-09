@@ -10,11 +10,9 @@ public class AnaliseGastoService {
     private static final BigDecimal LIMITE_ATENCAO = new BigDecimal("0.80");
 
     private final SituacaoFinanceiraService situacaoService;
-    private final CompromissoMetasService compromissoMetasService;
 
     public AnaliseGastoService() {
         this.situacaoService = new SituacaoFinanceiraService();
-        this.compromissoMetasService = new CompromissoMetasService();
     }
 
     public AnaliseGasto analisar(BigDecimal valor) {
@@ -25,8 +23,8 @@ public class AnaliseGastoService {
         SituacaoFinanceira situacao = situacaoService.analisar();
         BigDecimal saldoAtual = situacao.getSaldoAtual();
         BigDecimal margemLivre = situacao.getMargemLivre();
-        BigDecimal comprometimentoMetas = compromissoMetasService.calcularComprometimentoMensalTotal();
-        BigDecimal margemDisponivel = margemLivre.subtract(comprometimentoMetas);
+        BigDecimal comprometimentoMetas = situacao.getComprometimentoMensalMetas();
+        BigDecimal margemDisponivel = situacao.getMargemDisponivelAposMetas();
         BigDecimal margemAposGasto = margemDisponivel.subtract(valor);
         boolean saldoSuficiente = saldoAtual.compareTo(valor) >= 0;
 
