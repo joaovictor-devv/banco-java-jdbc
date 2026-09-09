@@ -1,6 +1,5 @@
 package com.joaovictor.controller;
 
-import com.joaovictor.dto.ApiResponse;
 import com.joaovictor.dto.PerfilFinanceiroRequest;
 import com.joaovictor.dto.SaldoAtualRequest;
 import com.joaovictor.model.PerfilFinanceiro;
@@ -19,34 +18,27 @@ public class PerfilFinanceiroController {
     private final SituacaoFinanceiraService situacaoService = new SituacaoFinanceiraService();
 
     @PostMapping
-    public ResponseEntity<ApiResponse> cadastrar(@RequestBody PerfilFinanceiroRequest request) {
-        service.cadastrarPerfil(
-                request.getRendaMensal(),
-                request.getRendaExtra(),
-                request.getGastoMoradia(),
-                request.getGastoAgua(),
-                request.getGastoEnergia(),
-                request.getGastoInternet(),
-                request.getGastoTransporte(),
-                request.getGastoAlimentacao(),
-                request.getOutrasDespesas(),
-                request.getValorPlanejadoGuardar(),
-                request.getObjetivoPrincipal(),
-                request.getSaldoAtual()
-        );
+    public ResponseEntity<PerfilFinanceiro> cadastrar(@RequestBody PerfilFinanceiroRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Os dados do perfil são obrigatórios.");
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse(true, "Perfil financeiro cadastrado com sucesso."));
+                .body(service.cadastrarPerfil(request.getNome(), request.getSaldoAtual()));
     }
 
     @GetMapping
-    public ResponseEntity<PerfilFinanceiro> buscarUltimo() {
+    public ResponseEntity<PerfilFinanceiro> buscar() {
         return ResponseEntity.ok(service.buscarUltimoPerfil());
     }
 
-    @GetMapping("/situacao")
-    public ResponseEntity<SituacaoFinanceira> situacao() {
-        return ResponseEntity.ok(situacaoService.analisar());
+    @PutMapping
+    public ResponseEntity<PerfilFinanceiro> atualizar(@RequestBody PerfilFinanceiroRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Os dados do perfil são obrigatórios.");
+        }
+
+        return ResponseEntity.ok(service.atualizarPerfil(request.getNome(), request.getSaldoAtual()));
     }
 
     @PutMapping("/saldo")
@@ -57,29 +49,8 @@ public class PerfilFinanceiroController {
         return ResponseEntity.ok(service.atualizarSaldoAtual(request.getSaldoAtual()));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PerfilFinanceiro> buscarPorId(@PathVariable long id) {
-        return ResponseEntity.ok(service.buscarPorId(id));
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse> atualizar(@PathVariable long id, @RequestBody PerfilFinanceiroRequest request) {
-        service.atualizarPerfil(
-                id,
-                request.getRendaMensal(),
-                request.getRendaExtra(),
-                request.getGastoMoradia(),
-                request.getGastoAgua(),
-                request.getGastoEnergia(),
-                request.getGastoInternet(),
-                request.getGastoTransporte(),
-                request.getGastoAlimentacao(),
-                request.getOutrasDespesas(),
-                request.getValorPlanejadoGuardar(),
-                request.getObjetivoPrincipal(),
-                request.getSaldoAtual()
-        );
-
-        return ResponseEntity.ok(new ApiResponse(true, "Perfil financeiro atualizado com sucesso."));
+    @GetMapping("/situacao")
+    public ResponseEntity<SituacaoFinanceira> situacao() {
+        return ResponseEntity.ok(situacaoService.analisar());
     }
 }
