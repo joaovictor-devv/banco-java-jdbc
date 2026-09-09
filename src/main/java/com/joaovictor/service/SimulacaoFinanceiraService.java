@@ -1,5 +1,6 @@
 package com.joaovictor.service;
 
+import com.joaovictor.dto.EventoSimulacaoRequest;
 import com.joaovictor.dto.SimulacaoFinanceiraRequest;
 import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.Meta;
@@ -12,12 +13,15 @@ import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SimulacaoFinanceiraService {
 
     private static final BigDecimal CEM = new BigDecimal("100");
     private static final BigDecimal LIMITE_ATENCAO_PERCENTUAL = new BigDecimal("80");
+    private static final int MAX_EVENTOS = 100;
 
     private final MotorFinanceiroService motorFinanceiroService;
     private final MetaService metaService;
@@ -30,66 +34,114 @@ public class SimulacaoFinanceiraService {
     }
 
     public ResultadoSimulacaoFinanceira simular(SimulacaoFinanceiraRequest request) {
-        validar(request);
+        validarBase(request);
 
         CapacidadeFinanceira atual = motorFinanceiroService.calcularCapacidade();
-        int meses = request.getMeses() != null ? request.getMeses() : 6;
-
-        BigDecimal rendaMensal = escolher(request.getRendaMensal(), atual.getRendaMensal());
-        BigDecimal rendaExtra = escolher(request.getRendaExtraMensal(), atual.getRendaExtra());
-        BigDecimal gastosMensais = escolher(request.getGastosMensais(), atual.getDespesasPlanejadas());
-        BigDecimal reservaMensal = valor(atual.getReservaPlanejada());
-        BigDecimal gastoExtraordinario = valor(request.getGastoExtraordinario());
-        BigDecimal aporteExtraMetasMensal = valor(request.getAporteExtraMetasMensal());
-        int mesGastoExtraordinario = gastoExtraordinario.compareTo(BigDecimal.ZERO) > 0
-                ? (request.getMesGastoExtraordinario() != null ? request.getMesGastoExtraordinario() : 1)
-                : 0;
-
         List<Meta> metas = metaService.listarMetas();
-        validarMetaPrioritaria(request.getMetaPrioritariaId(), metas);
+        validarMetasReferenciadas(request, metas);
+
+        int meses = request.getMeses() != null ? request.getMeses() : 6;
+        BigDecimal rendaMensalAtual = escolher(request.getRendaMensal(), atual.getRendaMensal());
+        BigDecimal gastosMensaisAtuais = escolher(request.getGastosMensais(), atual.getGastosMensais());
+        BigDecimal reservaMensal = valor(atual.getReservaPlanejada());
+        BigDecimal aporteExtraGlobalMensal = valor(request.getAporteExtraMetasMensal());
 
         List<EstadoMeta> estadosMetas = prepararMetas(metas);
+        Map<Long, BigDecimal> aporteExtraPorMetaMensal = new HashMap<>();
         List<ProjecaoMensal> evolucao = new ArrayList<>();
 
         BigDecimal saldo = valor(atual.getSaldoAtual());
         BigDecimal saldoInicial = saldo;
         BigDecimal totalAportadoMetas = BigDecimal.ZERO;
         BigDecimal totalReserva = BigDecimal.ZERO;
+        BigDecimal totalRendasExtraordinarias = BigDecimal.ZERO;
         BigDecimal totalGastosExtraordinarios = BigDecimal.ZERO;
         YearMonth mesBase = YearMonth.now();
 
+        List<EventoSimulacaoRequest> eventos = new ArrayList<>(request.getEventos());
+        eventos.sort(Comparator.comparingInt(EventoSimulacaoRequest::getMes));
+
         for (int indice = 1; indice <= meses; indice++) {
             YearMonth referencia = mesBase.plusMonths(indice);
-            BigDecimal rendaTotal = rendaMensal.add(rendaExtra);
+            BigDecimal rendaExtraordinariaMes = BigDecimal.ZERO;
+            BigDecimal gastoExtraordinarioMes = BigDecimal.ZERO;
+            List<String> eventosAplicados = new ArrayList<>();
+
+            for (EventoSimulacaoRequest evento : eventos) {
+                if (evento.getMes() != indice) {
+                    continue;
+                }
+
+                String tipo = normalizarTipo(evento.getTipo());
+                BigDecimal valorEvento = valor(evento.getValor());
+
+                switch (tipo) {
+                    case "RENDA_EXTRAORDINARIA" -> {
+                        rendaExtraordinariaMes = rendaExtraordinariaMes.add(valorEvento);
+                        eventosAplicados.add("Renda extraordinária de R$ " + valorEvento);
+                    }
+                    case "GASTO_EXTRAORDINARIO" -> {
+                        gastoExtraordinarioMes = gastoExtraordinarioMes.add(valorEvento);
+                        eventosAplicados.add("Gasto extraordinário de R$ " + valorEvento);
+                    }
+                    case "ALTERAR_RENDA" -> {
+                        rendaMensalAtual = valorEvento;
+                        eventosAplicados.add("Renda mensal alterada para R$ " + valorEvento);
+                    }
+                    case "ALTERAR_GASTOS" -> {
+                        gastosMensaisAtuais = valorEvento;
+                        eventosAplicados.add("Gastos mensais alterados para R$ " + valorEvento);
+                    }
+                    case "ALTERAR_APORTE_META" -> {
+                        if (evento.getMetaId() == null) {
+                            aporteExtraGlobalMensal = valorEvento;
+                            eventosAplicados.add("Aporte extra mensal geral alterado para R$ " + valorEvento);
+                        } else {
+                            aporteExtraPorMetaMensal.put(evento.getMetaId(), valorEvento);
+                            Meta meta = metas.stream()
+                                    .filter(item -> item.getId() == evento.getMetaId())
+                                    .findFirst()
+                                    .orElse(null);
+                            String nomeMeta = meta != null ? meta.getNome() : String.valueOf(evento.getMetaId());
+                            eventosAplicados.add("Aporte extra mensal da meta '" + nomeMeta + "' alterado para R$ " + valorEvento);
+                        }
+                    }
+                    default -> throw new IllegalArgumentException("Tipo de evento de simulação inválido: " + tipo);
+                }
+            }
 
             BigDecimal aporteBaseMes = aplicarAportesBase(estadosMetas, indice, referencia);
-            BigDecimal aporteExtraMes = aplicarAporteExtra(
-                    aporteExtraMetasMensal,
+            BigDecimal aporteEspecificoMes = aplicarAportesEspecificos(
+                    aporteExtraPorMetaMensal,
+                    estadosMetas,
+                    indice,
+                    referencia
+            );
+            BigDecimal aporteGlobalMes = aplicarAporteExtra(
+                    aporteExtraGlobalMensal,
                     estadosMetas,
                     request.getMetaPrioritariaId(),
                     indice,
                     referencia
             );
+            BigDecimal aporteExtraMes = aporteEspecificoMes.add(aporteGlobalMes);
 
-            BigDecimal gastoExtraMes = indice == mesGastoExtraordinario
-                    ? gastoExtraordinario
-                    : BigDecimal.ZERO;
-
-            BigDecimal margemMensal = rendaTotal
-                    .subtract(gastosMensais)
+            BigDecimal rendaDoMes = rendaMensalAtual.add(rendaExtraordinariaMes);
+            BigDecimal margemMensal = rendaDoMes
+                    .subtract(gastosMensaisAtuais)
                     .subtract(reservaMensal)
                     .subtract(aporteBaseMes)
                     .subtract(aporteExtraMes)
-                    .subtract(gastoExtraMes);
+                    .subtract(gastoExtraordinarioMes);
 
             saldo = saldo.add(margemMensal);
 
             String classificacao = classificarMes(
-                    rendaTotal,
-                    gastosMensais,
+                    rendaDoMes,
+                    gastosMensaisAtuais,
                     reservaMensal,
                     aporteBaseMes.add(aporteExtraMes),
-                    gastoExtraMes,
+                    gastoExtraordinarioMes,
                     margemMensal,
                     saldo
             );
@@ -97,20 +149,23 @@ public class SimulacaoFinanceiraService {
             evolucao.add(new ProjecaoMensal(
                     indice,
                     referencia.toString(),
-                    rendaTotal,
-                    gastosMensais,
+                    rendaMensalAtual,
+                    rendaExtraordinariaMes,
+                    gastosMensaisAtuais,
                     reservaMensal,
                     aporteBaseMes,
                     aporteExtraMes,
-                    gastoExtraMes,
+                    gastoExtraordinarioMes,
                     margemMensal,
                     saldo,
-                    classificacao
+                    classificacao,
+                    List.copyOf(eventosAplicados)
             ));
 
             totalAportadoMetas = totalAportadoMetas.add(aporteBaseMes).add(aporteExtraMes);
             totalReserva = totalReserva.add(reservaMensal);
-            totalGastosExtraordinarios = totalGastosExtraordinarios.add(gastoExtraMes);
+            totalRendasExtraordinarias = totalRendasExtraordinarias.add(rendaExtraordinariaMes);
+            totalGastosExtraordinarios = totalGastosExtraordinarios.add(gastoExtraordinarioMes);
         }
 
         List<ProjecaoMeta> projecoesMetas = montarProjecoesMetas(estadosMetas);
@@ -130,6 +185,7 @@ public class SimulacaoFinanceiraService {
                 variacaoSaldo,
                 totalReserva,
                 totalAportadoMetas,
+                totalRendasExtraordinarias,
                 totalGastosExtraordinarios,
                 classificacaoFinal,
                 mensagem,
@@ -166,6 +222,26 @@ public class SimulacaoFinanceiraService {
             estado.valorProjetado = estado.valorProjetado.add(aporte);
             total = total.add(aporte);
             registrarConclusao(estado, indiceMes, referencia);
+        }
+
+        return total;
+    }
+
+    private BigDecimal aplicarAportesEspecificos(Map<Long, BigDecimal> aportesPorMeta,
+                                                  List<EstadoMeta> estados,
+                                                  int indiceMes,
+                                                  YearMonth referencia) {
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (Map.Entry<Long, BigDecimal> entry : aportesPorMeta.entrySet()) {
+            EstadoMeta estado = estados.stream()
+                    .filter(item -> item.meta.getId() == entry.getKey())
+                    .findFirst()
+                    .orElse(null);
+
+            if (estado != null) {
+                total = total.add(aplicarNaMeta(estado, entry.getValue(), indiceMes, referencia));
+            }
         }
 
         return total;
@@ -287,14 +363,14 @@ public class SimulacaoFinanceiraService {
         return resultado;
     }
 
-    private String classificarMes(BigDecimal rendaTotal,
+    private String classificarMes(BigDecimal rendaDoMes,
                                   BigDecimal gastosMensais,
                                   BigDecimal reserva,
                                   BigDecimal aporteMetas,
                                   BigDecimal gastoExtraordinario,
                                   BigDecimal margemMensal,
                                   BigDecimal saldoProjetado) {
-        if (rendaTotal.compareTo(BigDecimal.ZERO) <= 0) {
+        if (rendaDoMes.compareTo(BigDecimal.ZERO) <= 0) {
             return "SEM_RENDA";
         }
 
@@ -316,7 +392,7 @@ public class SimulacaoFinanceiraService {
                 .add(gastoExtraordinario);
 
         BigDecimal percentualComprometido = compromissos.multiply(CEM)
-                .divide(rendaTotal, 2, RoundingMode.HALF_UP);
+                .divide(rendaDoMes, 2, RoundingMode.HALF_UP);
 
         if (percentualComprometido.compareTo(LIMITE_ATENCAO_PERCENTUAL) >= 0) {
             return "APERTADA";
@@ -331,20 +407,20 @@ public class SimulacaoFinanceiraService {
                                  int meses) {
         return switch (classificacaoFinal) {
             case "DEFICIT", "DEFICIT_MENSAL" ->
-                    "Neste cenário, a projeção termina em uma situação de déficit. Revise gastos, renda ou aportes antes de considerar este cenário seguro.";
+                    "Neste cenário, a projeção termina em déficit. Revise gastos, renda ou aportes antes de considerar este cenário seguro.";
             case "SEM_RENDA" ->
-                    "A simulação não possui renda mensal suficiente para sustentar uma projeção financeira.";
+                    "A simulação termina sem renda mensal suficiente para sustentar o cenário.";
             case "EQUILIBRADA" ->
                     "Ao final de " + meses + " meses, toda a renda projetada estaria comprometida, sem margem mensal para imprevistos.";
             case "APERTADA" ->
-                    "O cenário permanece possível, mas termina com pouca margem financeira. O saldo projetado é de R$ " + saldoFinal + ".";
+                    "O cenário permanece possível, mas termina com pouca margem financeira. O saldo disponível projetado é de R$ " + saldoFinal + ".";
             default -> variacaoSaldo.compareTo(BigDecimal.ZERO) >= 0
-                    ? "O cenário termina saudável após " + meses + " meses, com variação de saldo de R$ " + variacaoSaldo + "."
-                    : "O cenário termina saudável, mas com redução de saldo de R$ " + variacaoSaldo.abs() + ".";
+                    ? "O cenário termina saudável após " + meses + " meses, com variação de saldo disponível de R$ " + variacaoSaldo + "."
+                    : "O cenário termina saudável, mas com redução do saldo disponível de R$ " + variacaoSaldo.abs() + ".";
         };
     }
 
-    private void validar(SimulacaoFinanceiraRequest request) {
+    private void validarBase(SimulacaoFinanceiraRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Os dados da simulação são obrigatórios.");
         }
@@ -354,35 +430,81 @@ public class SimulacaoFinanceiraService {
             throw new IllegalArgumentException("O período da simulação deve estar entre 1 e 60 meses.");
         }
 
+        if (request.getNomeCenario() != null && request.getNomeCenario().trim().length() > 100) {
+            throw new IllegalArgumentException("O nome do cenário deve ter no máximo 100 caracteres.");
+        }
+
         validarNaoNegativoOpcional(request.getRendaMensal(), "A renda mensal simulada não pode ser negativa.");
-        validarNaoNegativoOpcional(request.getRendaExtraMensal(), "A renda extra simulada não pode ser negativa.");
         validarNaoNegativoOpcional(request.getGastosMensais(), "Os gastos mensais simulados não podem ser negativos.");
-        validarNaoNegativoOpcional(request.getGastoExtraordinario(), "O gasto extraordinário não pode ser negativo.");
         validarNaoNegativoOpcional(request.getAporteExtraMetasMensal(), "O aporte extra para metas não pode ser negativo.");
 
-        if (valor(request.getGastoExtraordinario()).compareTo(BigDecimal.ZERO) > 0) {
-            int mesExtra = request.getMesGastoExtraordinario() != null
-                    ? request.getMesGastoExtraordinario()
-                    : 1;
-            if (mesExtra < 1 || mesExtra > meses) {
-                throw new IllegalArgumentException("O mês do gasto extraordinário deve estar dentro do período simulado.");
+        if (request.getEventos().size() > MAX_EVENTOS) {
+            throw new IllegalArgumentException("Uma simulação pode ter no máximo " + MAX_EVENTOS + " eventos.");
+        }
+
+        for (EventoSimulacaoRequest evento : request.getEventos()) {
+            validarEvento(evento, meses);
+        }
+    }
+
+    private void validarEvento(EventoSimulacaoRequest evento, int meses) {
+        if (evento == null) {
+            throw new IllegalArgumentException("A lista de eventos não pode conter eventos vazios.");
+        }
+
+        if (evento.getMes() == null || evento.getMes() < 1 || evento.getMes() > meses) {
+            throw new IllegalArgumentException("Todo evento deve indicar um mês entre 1 e o período total da simulação.");
+        }
+
+        String tipo = normalizarTipo(evento.getTipo());
+        BigDecimal valorEvento = evento.getValor();
+        if (valorEvento == null || valorEvento.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("O valor de um evento não pode ser negativo.");
+        }
+
+        switch (tipo) {
+            case "RENDA_EXTRAORDINARIA", "GASTO_EXTRAORDINARIO" -> {
+                if (valorEvento.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new IllegalArgumentException("Rendas e gastos extraordinários devem ser maiores que zero.");
+                }
+            }
+            case "ALTERAR_RENDA", "ALTERAR_GASTOS", "ALTERAR_APORTE_META" -> {
+                // Zero é permitido para representar a interrupção de renda, gasto ou aporte.
+            }
+            default -> throw new IllegalArgumentException("Tipo de evento de simulação inválido: " + tipo);
+        }
+    }
+
+    private void validarMetasReferenciadas(SimulacaoFinanceiraRequest request, List<Meta> metas) {
+        validarMetaExistente(request.getMetaPrioritariaId(), metas, "A meta prioritária informada não foi encontrada.");
+
+        for (EventoSimulacaoRequest evento : request.getEventos()) {
+            if ("ALTERAR_APORTE_META".equals(normalizarTipo(evento.getTipo())) && evento.getMetaId() != null) {
+                validarMetaExistente(evento.getMetaId(), metas, "A meta informada em um evento de aporte não foi encontrada.");
             }
         }
     }
 
-    private void validarMetaPrioritaria(Long metaId, List<Meta> metas) {
+    private void validarMetaExistente(Long metaId, List<Meta> metas, String mensagem) {
         if (metaId == null) {
             return;
         }
 
         boolean existe = metas.stream().anyMatch(meta -> meta.getId() == metaId);
         if (!existe) {
-            throw new IllegalArgumentException("A meta prioritária informada não foi encontrada.");
+            throw new IllegalArgumentException(mensagem);
         }
     }
 
-    private void validarNaoNegativoOpcional(BigDecimal valor, String mensagem) {
-        if (valor != null && valor.compareTo(BigDecimal.ZERO) < 0) {
+    private String normalizarTipo(String tipo) {
+        if (tipo == null || tipo.isBlank()) {
+            throw new IllegalArgumentException("O tipo do evento é obrigatório.");
+        }
+        return tipo.trim().toUpperCase();
+    }
+
+    private void validarNaoNegativoOpcional(BigDecimal numero, String mensagem) {
+        if (numero != null && numero.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException(mensagem);
         }
     }
@@ -421,8 +543,8 @@ public class SimulacaoFinanceiraService {
         return informado != null ? informado : valor(padrao);
     }
 
-    private BigDecimal valor(BigDecimal valor) {
-        return valor != null ? valor : BigDecimal.ZERO;
+    private BigDecimal valor(BigDecimal numero) {
+        return numero != null ? numero : BigDecimal.ZERO;
     }
 
     private static class EstadoMeta {
