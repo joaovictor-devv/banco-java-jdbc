@@ -37,6 +37,8 @@ public class TransacaoController {
 
     @PostMapping("/saida")
     public ResponseEntity<ApiResponse> registrarSaida(@RequestBody TransacaoRequest request) {
+        AnaliseGasto analise = analiseGastoService.analisar(request.getValor());
+
         service.registrarSaida(
                 request.getValor(),
                 request.getDescricao(),
@@ -44,8 +46,17 @@ public class TransacaoController {
                 request.getData() != null ? request.getData() : LocalDate.now()
         );
 
+        String mensagem = "Saída registrada com sucesso.";
+
+        if (!analise.isRecomendado()) {
+            mensagem += " Atenção: " + analise.getMensagem();
+        } else if ("ATENCAO".equals(analise.getClassificacao())) {
+            mensagem += " Atenção: este gasto consome uma parcela alta da sua margem livre. "
+                    + analise.getMensagem();
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse(true, "Saída registrada com sucesso."));
+                .body(new ApiResponse(true, mensagem));
     }
 
     @GetMapping("/analisar-gasto")
