@@ -5,8 +5,6 @@ import java.math.BigDecimal;
 public class OrcamentoResumo {
 
     private final BigDecimal rendaMensal;
-    private final BigDecimal rendaExtra;
-    private final BigDecimal rendaTotal;
     private final BigDecimal gastosMensais;
     private final BigDecimal reservaPlanejada;
     private final BigDecimal margemAntesMetas;
@@ -18,8 +16,6 @@ public class OrcamentoResumo {
     private final String classificacao;
 
     public OrcamentoResumo(BigDecimal rendaMensal,
-                           BigDecimal rendaExtra,
-                           BigDecimal rendaTotal,
                            BigDecimal gastosMensais,
                            BigDecimal reservaPlanejada,
                            BigDecimal margemAntesMetas,
@@ -30,8 +26,6 @@ public class OrcamentoResumo {
                            BigDecimal percentualRendaComprometida,
                            String classificacao) {
         this.rendaMensal = rendaMensal;
-        this.rendaExtra = rendaExtra;
-        this.rendaTotal = rendaTotal;
         this.gastosMensais = gastosMensais;
         this.reservaPlanejada = reservaPlanejada;
         this.margemAntesMetas = margemAntesMetas;
@@ -44,8 +38,6 @@ public class OrcamentoResumo {
     }
 
     public BigDecimal getRendaMensal() { return rendaMensal; }
-    public BigDecimal getRendaExtra() { return rendaExtra; }
-    public BigDecimal getRendaTotal() { return rendaTotal; }
     public BigDecimal getGastosMensais() { return gastosMensais; }
     public BigDecimal getReservaPlanejada() { return reservaPlanejada; }
     public BigDecimal getMargemAntesMetas() { return margemAntesMetas; }
