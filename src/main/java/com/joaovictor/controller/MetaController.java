@@ -22,14 +22,8 @@ public class MetaController {
     private final AnaliseMetaService analiseMetaService = new AnaliseMetaService();
 
     @PostMapping
-    public ResponseEntity<ApiResponse> cadastrar(@RequestBody MetaRequest request) {
-        service.validarMeta(
-                request.getNome(),
-                request.getValorAlvo(),
-                request.getPrazoMeses(),
-                request.getValorInicial(),
-                request.getPrioridade()
-        );
+    public ResponseEntity<MetaAnaliseResponse> cadastrar(@RequestBody MetaRequest request) {
+        validarRequest(request);
 
         Meta candidata = new Meta(
                 request.getNome(),
@@ -41,8 +35,16 @@ public class MetaController {
         );
 
         AnaliseMeta analise = analiseMetaService.analisar(candidata);
+        if (!analise.isViavel()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(new MetaAnaliseResponse(
+                            candidata,
+                            analise,
+                            "A meta não foi cadastrada porque não é viável com a situação financeira atual."
+                    ));
+        }
 
-        service.cadastrarMeta(
+        Meta criada = service.cadastrarMeta(
                 request.getValorAlvo(),
                 request.getNome(),
                 request.getPrazoMeses(),
@@ -51,10 +53,12 @@ public class MetaController {
                 request.getDescricao()
         );
 
-        String mensagem = "Meta cadastrada com sucesso. " + analise.getMensagem();
-
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new ApiResponse(true, mensagem));
+                .body(new MetaAnaliseResponse(
+                        criada,
+                        analise,
+                        "Meta cadastrada com sucesso."
+                ));
     }
 
     @GetMapping
@@ -89,6 +93,9 @@ public class MetaController {
     @PutMapping("/{id}")
     public ResponseEntity<MetaAnaliseResponse> atualizar(@PathVariable long id,
                                                           @RequestBody MetaRequest request) {
+        service.buscarPorId(id);
+        validarRequest(request);
+
         Meta candidata = new Meta(
                 id,
                 request.getNome(),
@@ -99,15 +106,16 @@ public class MetaController {
                 request.getDescricao()
         );
 
-        service.validarMeta(
-                request.getNome(),
-                request.getValorAlvo(),
-                request.getPrazoMeses(),
-                request.getValorInicial(),
-                request.getPrioridade()
-        );
-
         AnaliseMeta analise = analiseMetaService.analisar(candidata);
+        if (!analise.isViavel()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(new MetaAnaliseResponse(
+                            candidata,
+                            analise,
+                            "A meta não foi alterada porque a nova configuração não é viável."
+                    ));
+        }
+
         Meta atualizada = service.atualizarMeta(
                 id,
                 request.getValorAlvo(),
@@ -146,5 +154,19 @@ public class MetaController {
     public ResponseEntity<ApiResponse> excluir(@PathVariable long id) {
         service.excluirMeta(id);
         return ResponseEntity.ok(new ApiResponse(true, "Meta excluída com sucesso."));
+    }
+
+    private void validarRequest(MetaRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Os dados da meta são obrigatórios.");
+        }
+
+        service.validarMeta(
+                request.getNome(),
+                request.getValorAlvo(),
+                request.getPrazoMeses(),
+                request.getValorInicial(),
+                request.getPrioridade()
+        );
     }
 }
