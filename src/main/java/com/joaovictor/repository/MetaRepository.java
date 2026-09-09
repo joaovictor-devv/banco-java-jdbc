@@ -1,12 +1,14 @@
 package com.joaovictor.repository;
 
 import com.joaovictor.model.Meta;
+import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class MetaRepository {
 
     public long salvar(Meta meta) {
