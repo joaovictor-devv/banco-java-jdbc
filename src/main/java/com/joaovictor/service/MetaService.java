@@ -5,8 +5,12 @@ import com.joaovictor.repository.MetaRepository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class MetaService {
+
+    private static final Set<String> PRIORIDADES_VALIDAS = Set.of("baixa", "media", "alta");
 
     private final MetaRepository repository;
 
@@ -28,7 +32,7 @@ public class MetaService {
                 valorAlvo,
                 prazoMeses,
                 valorInicial,
-                prioridade.trim(),
+                normalizarPrioridade(prioridade),
                 normalizarDescricao(descricao)
         );
 
@@ -53,7 +57,7 @@ public class MetaService {
                 valorAlvo,
                 prazoMeses,
                 valorInicial,
-                prioridade.trim(),
+                normalizarPrioridade(prioridade),
                 normalizarDescricao(descricao)
         );
 
@@ -123,7 +127,7 @@ public class MetaService {
             throw new IllegalArgumentException("O nome da meta é obrigatório.");
         }
 
-        if (nome.length() > 100) {
+        if (nome.trim().length() > 100) {
             throw new IllegalArgumentException("O nome da meta deve ter no máximo 100 caracteres.");
         }
 
@@ -135,6 +139,10 @@ public class MetaService {
             throw new IllegalArgumentException("O prazo em meses deve ser maior que zero.");
         }
 
+        if (prazoMeses > 600) {
+            throw new IllegalArgumentException("O prazo da meta deve ser de no máximo 600 meses.");
+        }
+
         if (valorInicial == null || valorInicial.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("O valor inicial não pode ser negativo.");
         }
@@ -143,13 +151,19 @@ public class MetaService {
             throw new IllegalArgumentException("O valor inicial não pode ser maior que o valor alvo.");
         }
 
+        String prioridadeNormalizada = normalizarPrioridade(prioridade);
+        if (!PRIORIDADES_VALIDAS.contains(prioridadeNormalizada)) {
+            throw new IllegalArgumentException("A prioridade deve ser baixa, media ou alta.");
+        }
+    }
+
+    private String normalizarPrioridade(String prioridade) {
         if (prioridade == null || prioridade.isBlank()) {
             throw new IllegalArgumentException("A prioridade é obrigatória.");
         }
 
-        if (prioridade.length() > 30) {
-            throw new IllegalArgumentException("A prioridade deve ter no máximo 30 caracteres.");
-        }
+        String normalizada = prioridade.trim().toLowerCase(Locale.ROOT);
+        return normalizada.equals("média") ? "media" : normalizada;
     }
 
     private String normalizarDescricao(String descricao) {
@@ -157,7 +171,7 @@ public class MetaService {
             return null;
         }
 
-        if (descricao.length() > 255) {
+        if (descricao.trim().length() > 255) {
             throw new IllegalArgumentException("A descrição deve ter no máximo 255 caracteres.");
         }
 
