@@ -19,6 +19,22 @@ const FORM_INICIAL = {
   objetivoPrincipal: "",
 };
 
+function formatarPerfil(dados) {
+  return {
+    rendaMensal: dados.rendaMensal ?? "",
+    rendaExtra: dados.rendaExtra ?? "",
+    gastoMoradia: dados.gastoMoradia ?? "",
+    gastoAgua: dados.gastoAgua ?? "",
+    gastoEnergia: dados.gastoEnergia ?? "",
+    gastoInternet: dados.gastoInternet ?? "",
+    gastoTransporte: dados.gastoTransporte ?? "",
+    gastoAlimentacao: dados.gastoAlimentacao ?? "",
+    outrasDespesas: dados.outrasDespesas ?? "",
+    valorPlanejadoGuardar: dados.valorPlanejadoGuardar ?? "",
+    objetivoPrincipal: dados.objetivoPrincipal ?? "",
+  };
+}
+
 function Planejamento() {
   const [perfilId, setPerfilId] = useState(null);
   const [mensagem, setMensagem] = useState("");
@@ -32,7 +48,10 @@ function Planejamento() {
     buscarPerfilFinanceiro()
       .then((response) => {
         if (ativo && response.data) {
-          aplicarPerfil(response.data);
+          const dadosFormatados = formatarPerfil(response.data);
+          setPerfilId(response.data.id);
+          setForm(dadosFormatados);
+          setFormOriginal(dadosFormatados);
         }
       })
       .catch((error) => {
@@ -44,31 +63,14 @@ function Planejamento() {
     };
   }, []);
 
-  function aplicarPerfil(dados) {
-    const dadosFormatados = {
-      rendaMensal: dados.rendaMensal ?? "",
-      rendaExtra: dados.rendaExtra ?? "",
-      gastoMoradia: dados.gastoMoradia ?? "",
-      gastoAgua: dados.gastoAgua ?? "",
-      gastoEnergia: dados.gastoEnergia ?? "",
-      gastoInternet: dados.gastoInternet ?? "",
-      gastoTransporte: dados.gastoTransporte ?? "",
-      gastoAlimentacao: dados.gastoAlimentacao ?? "",
-      outrasDespesas: dados.outrasDespesas ?? "",
-      valorPlanejadoGuardar: dados.valorPlanejadoGuardar ?? "",
-      objetivoPrincipal: dados.objetivoPrincipal ?? "",
-    };
-
-    setPerfilId(dados.id);
-    setForm(dadosFormatados);
-    setFormOriginal(dadosFormatados);
-  }
-
   async function carregarPerfilFinanceiro() {
     try {
       const response = await buscarPerfilFinanceiro();
       if (response.data) {
-        aplicarPerfil(response.data);
+        const dadosFormatados = formatarPerfil(response.data);
+        setPerfilId(response.data.id);
+        setForm(dadosFormatados);
+        setFormOriginal(dadosFormatados);
       }
     } catch (error) {
       console.error("Erro ao carregar perfil financeiro:", error);
