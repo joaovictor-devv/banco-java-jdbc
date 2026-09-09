@@ -11,7 +11,11 @@ public class PerfilFinanceiroService {
     private final PerfilFinanceiroRepository repository;
 
     public PerfilFinanceiroService() {
-        this.repository = new PerfilFinanceiroRepository();
+        this(new PerfilFinanceiroRepository());
+    }
+
+    public PerfilFinanceiroService(PerfilFinanceiroRepository repository) {
+        this.repository = repository;
     }
 
     public PerfilFinanceiro cadastrarPerfil(String nome, BigDecimal saldoAtual) {
@@ -19,20 +23,9 @@ public class PerfilFinanceiroService {
             throw new IllegalArgumentException("Já existe um perfil financeiro. Use a atualização do perfil.");
         }
 
-        String nomeNormalizado = normalizarNome(nome);
-        BigDecimal saldoNormalizado = valorOuZero(saldoAtual);
-        validarSaldo(saldoNormalizado);
-
-        PerfilFinanceiro perfil = new PerfilFinanceiro(
-                nomeNormalizado,
-                saldoNormalizado,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO
-        );
-
+        PerfilFinanceiro perfil = novoPerfil(nome, saldoAtual);
         repository.salvar(perfil);
-        return buscarUltimoPerfil();
+        return repository.buscarUltimoPerfil();
     }
 
     public PerfilFinanceiro buscarUltimoPerfil() {
@@ -46,7 +39,13 @@ public class PerfilFinanceiroService {
     }
 
     public PerfilFinanceiro atualizarPerfil(String nome, BigDecimal saldoAtual) {
-        PerfilFinanceiro existente = buscarUltimoPerfil();
+        PerfilFinanceiro existente = repository.buscarUltimoPerfil();
+
+        if (existente == null) {
+            PerfilFinanceiro novo = novoPerfil(nome, saldoAtual);
+            repository.salvar(novo);
+            return repository.buscarUltimoPerfil();
+        }
 
         String nomeNormalizado = nome == null
                 ? normalizarNome(existente.getNome())
@@ -72,10 +71,30 @@ public class PerfilFinanceiroService {
     public PerfilFinanceiro atualizarSaldoAtual(BigDecimal saldoAtual) {
         validarSaldo(saldoAtual);
 
-        PerfilFinanceiro perfil = buscarUltimoPerfil();
+        PerfilFinanceiro perfil = repository.buscarUltimoPerfil();
+        if (perfil == null) {
+            PerfilFinanceiro novo = novoPerfil("Usuário", saldoAtual);
+            repository.salvar(novo);
+            return repository.buscarUltimoPerfil();
+        }
+
         repository.atualizarSaldo(perfil.getId(), saldoAtual);
         perfil.setSaldoAtual(saldoAtual);
         return perfil;
+    }
+
+    private PerfilFinanceiro novoPerfil(String nome, BigDecimal saldoAtual) {
+        String nomeNormalizado = normalizarNome(nome);
+        BigDecimal saldoNormalizado = valorOuZero(saldoAtual);
+        validarSaldo(saldoNormalizado);
+
+        return new PerfilFinanceiro(
+                nomeNormalizado,
+                saldoNormalizado,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO
+        );
     }
 
     private String normalizarNome(String nome) {
