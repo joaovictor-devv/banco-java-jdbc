@@ -16,11 +16,6 @@ public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(SaldoInsuficienteException.class)
-    public ResponseEntity<Map<String, Object>> tratarSaldoInsuficiente(SaldoInsuficienteException e) {
-        return resposta(HttpStatus.BAD_REQUEST, "SALDO_INSUFICIENTE", e.getMessage());
-    }
-
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> tratarIllegalArgument(IllegalArgumentException e) {
         return resposta(HttpStatus.BAD_REQUEST, "DADOS_INVALIDOS", e.getMessage());
