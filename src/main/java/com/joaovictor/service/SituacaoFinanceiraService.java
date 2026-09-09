@@ -4,19 +4,17 @@ import com.joaovictor.model.PerfilFinanceiro;
 import com.joaovictor.model.ResumoFinanceiro;
 import com.joaovictor.model.SituacaoFinanceira;
 import com.joaovictor.repository.PerfilFinanceiroRepository;
-import com.joaovictor.repository.TransacaoRepository;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 public class SituacaoFinanceiraService {
 
     private final PerfilFinanceiroRepository perfilRepository;
-    private final TransacaoRepository transacaoRepository;
+    private final AnaliseFinanceiraService analiseFinanceiraService;
 
     public SituacaoFinanceiraService() {
         this.perfilRepository = new PerfilFinanceiroRepository();
-        this.transacaoRepository = new TransacaoRepository();
+        this.analiseFinanceiraService = new AnaliseFinanceiraService();
     }
 
     public SituacaoFinanceira analisar() {
@@ -42,14 +40,18 @@ public class SituacaoFinanceiraService {
 
         BigDecimal valorPlanejadoGuardar = valor(perfil.getValorPlanejadoGuardar());
         BigDecimal margemLivre = rendaTotal.subtract(despesasPlanejadas).subtract(valorPlanejadoGuardar);
+        BigDecimal saldoAtual = valor(perfil.getSaldoAtual());
 
-        ResumoFinanceiro resumo = new AnaliseFinanceiraService().gerarResumoDoMesAtual();
+        // Transações continuam disponíveis como histórico opcional, mas não são
+        // necessárias para o saldo usado nas decisões do FinIA.
+        ResumoFinanceiro resumo = analiseFinanceiraService.gerarResumoDoMesAtual();
 
         String classificacao = classificar(
                 rendaTotal,
                 despesasPlanejadas,
                 valorPlanejadoGuardar,
-                resumo.getSaldoMes()
+                margemLivre,
+                saldoAtual
         );
 
         return new SituacaoFinanceira(
@@ -59,6 +61,7 @@ public class SituacaoFinanceiraService {
                 despesasPlanejadas,
                 valorPlanejadoGuardar,
                 margemLivre,
+                saldoAtual,
                 resumo.getSaldoMes(),
                 resumo.getTotalEntradas(),
                 resumo.getTotalSaidas(),
@@ -69,13 +72,14 @@ public class SituacaoFinanceiraService {
     private String classificar(BigDecimal rendaTotal,
                                BigDecimal despesasPlanejadas,
                                BigDecimal valorPlanejadoGuardar,
-                               BigDecimal saldoMesAtual) {
+                               BigDecimal margemLivre,
+                               BigDecimal saldoAtual) {
 
         if (rendaTotal.compareTo(BigDecimal.ZERO) <= 0) {
             return "SEM_RENDA";
         }
 
-        if (saldoMesAtual.compareTo(BigDecimal.ZERO) < 0) {
+        if (saldoAtual.compareTo(BigDecimal.ZERO) < 0) {
             return "DEFICIT";
         }
 
@@ -89,8 +93,6 @@ public class SituacaoFinanceiraService {
             return "RESERVA_INVIAVEL";
         }
 
-        BigDecimal margemLivre = margemAntesDaReserva.subtract(valorPlanejadoGuardar);
-
         if (margemLivre.compareTo(BigDecimal.ZERO) == 0) {
             return "EQUILIBRADA";
         }
@@ -101,8 +103,8 @@ public class SituacaoFinanceiraService {
     private BigDecimal somar(BigDecimal... valores) {
         BigDecimal total = BigDecimal.ZERO;
 
-        for (BigDecimal valor : valores) {
-            total = total.add(valor(valor));
+        for (BigDecimal item : valores) {
+            total = total.add(valor(item));
         }
 
         return total;
