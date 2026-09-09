@@ -2,7 +2,9 @@ package com.joaovictor.controller;
 
 import com.joaovictor.dto.ApiResponse;
 import com.joaovictor.dto.MetaRequest;
+import com.joaovictor.model.AnaliseMeta;
 import com.joaovictor.model.Meta;
+import com.joaovictor.service.AnaliseMetaService;
 import com.joaovictor.service.MetaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import java.util.List;
 public class MetaController {
 
     private final MetaService service = new MetaService();
+    private final AnaliseMetaService analiseMetaService = new AnaliseMetaService();
 
     @PostMapping
     public ResponseEntity<ApiResponse> cadastrar(@RequestBody MetaRequest request) {
@@ -39,6 +42,11 @@ public class MetaController {
     @GetMapping("/{id}")
     public ResponseEntity<Meta> buscarPorId(@PathVariable long id) {
         return ResponseEntity.ok(service.buscarPorId(id));
+    }
+
+    @GetMapping("/{id}/viabilidade")
+    public ResponseEntity<AnaliseMeta> analisarViabilidade(@PathVariable long id) {
+        return ResponseEntity.ok(analiseMetaService.analisar(id));
     }
 
     @DeleteMapping("/{id}")
