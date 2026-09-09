@@ -10,8 +10,6 @@ import java.math.BigDecimal;
 
 public class OrcamentoService {
 
-    private static final BigDecimal ZERO = BigDecimal.ZERO;
-
     private final PerfilFinanceiroRepository perfilRepository;
     private final MotorFinanceiroService motorFinanceiroService;
 
@@ -21,55 +19,31 @@ public class OrcamentoService {
     }
 
     public OrcamentoResumo buscarResumo() {
-        CapacidadeFinanceira capacidade = motorFinanceiroService.calcularCapacidade();
-        return montarResumo(capacidade);
+        return montarResumo(motorFinanceiroService.calcularCapacidade());
     }
 
     public OrcamentoResumo salvar(OrcamentoRequest request) {
         validar(request);
 
-        BigDecimal rendaExtra = valor(request.getRendaExtra());
-        BigDecimal gastosMensais = valor(request.getGastosMensais());
-        BigDecimal reserva = valor(request.getValorPlanejadoGuardar());
-
         PerfilFinanceiro existente = perfilRepository.buscarUltimoPerfil();
 
         if (existente == null) {
             PerfilFinanceiro novo = new PerfilFinanceiro(
+                    "Usuário",
+                    BigDecimal.ZERO,
                     request.getRendaMensal(),
-                    rendaExtra,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    gastosMensais,
-                    reserva,
-                    "Organizar finanças",
-                    ZERO
+                    request.getGastosMensais(),
+                    request.getValorPlanejadoGuardar()
             );
             perfilRepository.salvar(novo);
         } else {
-            String objetivo = existente.getObjetivoPrincipal();
-            if (objetivo == null || objetivo.isBlank()) {
-                objetivo = "Organizar finanças";
-            }
-
             PerfilFinanceiro atualizado = new PerfilFinanceiro(
                     existente.getId(),
+                    existente.getNome(),
+                    existente.getSaldoAtual(),
                     request.getRendaMensal(),
-                    rendaExtra,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    ZERO,
-                    gastosMensais,
-                    reserva,
-                    objetivo,
-                    valor(existente.getSaldoAtual())
+                    request.getGastosMensais(),
+                    request.getValorPlanejadoGuardar()
             );
             perfilRepository.atualizar(existente.getId(), atualizado);
         }
@@ -80,9 +54,7 @@ public class OrcamentoService {
     private OrcamentoResumo montarResumo(CapacidadeFinanceira capacidade) {
         return new OrcamentoResumo(
                 capacidade.getRendaMensal(),
-                capacidade.getRendaExtra(),
-                capacidade.getRendaTotal(),
-                capacidade.getDespesasPlanejadas(),
+                capacidade.getGastosMensais(),
                 capacidade.getReservaPlanejada(),
                 capacidade.getMargemAntesMetas(),
                 capacidade.getComprometimentoMensalMetas(),
@@ -100,18 +72,13 @@ public class OrcamentoService {
         }
 
         validarNaoNegativo(request.getRendaMensal(), "A renda mensal é obrigatória e não pode ser negativa.");
-        validarNaoNegativo(valor(request.getRendaExtra()), "A renda extra não pode ser negativa.");
-        validarNaoNegativo(valor(request.getGastosMensais()), "Os gastos mensais não podem ser negativos.");
-        validarNaoNegativo(valor(request.getValorPlanejadoGuardar()), "O valor planejado para guardar não pode ser negativo.");
+        validarNaoNegativo(request.getGastosMensais(), "Os gastos mensais são obrigatórios e não podem ser negativos.");
+        validarNaoNegativo(request.getValorPlanejadoGuardar(), "O valor planejado para guardar é obrigatório e não pode ser negativo.");
     }
 
     private void validarNaoNegativo(BigDecimal valor, String mensagem) {
         if (valor == null || valor.compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException(mensagem);
         }
-    }
-
-    private BigDecimal valor(BigDecimal valor) {
-        return valor != null ? valor : BigDecimal.ZERO;
     }
 }
