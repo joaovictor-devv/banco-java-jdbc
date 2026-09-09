@@ -29,7 +29,6 @@ function Metas() {
     try {
       const response = await listarMetas();
       const lista = response.data || [];
-      setMetas(lista);
 
       const pares = await Promise.all(
         lista.map(async (meta) => {
@@ -42,6 +41,7 @@ function Metas() {
         })
       );
 
+      setMetas(lista);
       setAnalises(Object.fromEntries(pares));
     } catch (error) {
       setErro(error.response?.data?.mensagem || "Erro ao carregar metas.");
@@ -49,8 +49,40 @@ function Metas() {
   }, []);
 
   useEffect(() => {
-    carregarMetas();
-  }, [carregarMetas]);
+    let ativo = true;
+
+    listarMetas()
+      .then(async (response) => {
+        const lista = response.data || [];
+        const pares = await Promise.all(
+          lista.map(async (meta) => {
+            try {
+              const analise = await analisarViabilidadeMeta(meta.id);
+              return [meta.id, analise.data];
+            } catch {
+              return [meta.id, null];
+            }
+          })
+        );
+
+        return { lista, pares };
+      })
+      .then(({ lista, pares }) => {
+        if (ativo) {
+          setMetas(lista);
+          setAnalises(Object.fromEntries(pares));
+        }
+      })
+      .catch((error) => {
+        if (ativo) {
+          setErro(error.response?.data?.mensagem || "Erro ao carregar metas.");
+        }
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   function atualizarCampo(campo, valor) {
     setNovaMeta((atual) => ({ ...atual, [campo]: valor }));
