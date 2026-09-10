@@ -117,7 +117,6 @@ jobs:
           docker run --rm --network host -i mysql:8.4 \
             mysql -h127.0.0.1 -uroot -proot < /tmp/schema-legado.sql
 
-          # Executa duas vezes para provar que a migração é segura para repetição.
           docker run --rm --network host -i mysql:8.4 \
             mysql -h127.0.0.1 -uroot -proot < database/migration_v3_final.sql
           docker run --rm --network host -i mysql:8.4 \
@@ -172,6 +171,13 @@ jobs:
           curl -fsS http://localhost:8080/ia/status \
             | jq -e '.configurada == false'
 
+          STATUS_IA=$(curl -sS -o /tmp/ia-sem-chave.json -w '%{http_code}' \
+            -X POST http://localhost:8080/ia/perguntar \
+            -H 'Content-Type: application/json' \
+            -d '{"pergunta":"Como está minha situação?"}')
+          test "$STATUS_IA" = "503"
+          jq -e '.erro == "IA_INDISPONIVEL"' /tmp/ia-sem-chave.json
+
           curl -fsS -X PUT http://localhost:8080/perfil-financeiro \
             -H 'Content-Type: application/json' \
             -d '{"nome":"Teste CI","saldoAtual":1200}' \
@@ -203,7 +209,6 @@ jobs:
             -d '{"nomeCenario":"Teste CI","meses":3,"eventos":[{"mes":2,"tipo":"GASTO_EXTRAORDINARIO","valor":600}]}' \
             | jq -e '.saldoFinalProjetado == 2100 and .totalGastosExtraordinarios == 600 and .projecoesMetas[0].valorProjetado == 2200'
 
-          # Uma simulação nunca pode alterar saldo, orçamento ou progresso reais.
           curl -fsS http://localhost:8080/perfil-financeiro \
             | jq -e '.saldoAtual == 1200 and .rendaMensal == 2500 and .gastosMensais == 1300'
 
@@ -218,7 +223,6 @@ jobs:
           test "$STATUS_INVIAVEL" = "422"
           jq -e '.analise.classificacao == "INVIAVEL"' /tmp/meta-inviavel.json
 
-          # Meta inviável precisa ser bloqueada antes da persistência.
           curl -fsS http://localhost:8080/metas \
             | jq -e 'length == 1'
 
