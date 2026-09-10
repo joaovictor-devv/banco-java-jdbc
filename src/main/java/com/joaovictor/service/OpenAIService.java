@@ -26,12 +26,16 @@ public class OpenAIService {
         this.model = model;
     }
 
+    public boolean isConfigurada() {
+        return apiKey != null && !apiKey.isBlank();
+    }
+
     public RespostaIA perguntar(String pergunta) {
         if (pergunta == null || pergunta.isBlank()) {
             throw new IllegalArgumentException("A pergunta é obrigatória.");
         }
 
-        if (apiKey == null || apiKey.isBlank()) {
+        if (!isConfigurada()) {
             throw new IAIndisponivelException(
                     "A IA está indisponível porque a variável OPENAI_API_KEY não foi configurada."
             );
