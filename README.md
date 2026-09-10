@@ -267,6 +267,12 @@ A resposta contém, entre outros dados:
 
 Dashboard, orçamento, metas, capacidade de gasto e simulações funcionam sem chamada paga de IA.
 
+### Verificar se a IA está configurada
+
+`GET /ia/status`
+
+Esse endpoint não faz chamada externa, não consome créditos e nunca retorna a chave. Ele apenas informa se `OPENAI_API_KEY` está configurada no ambiente.
+
 ### Perguntar à FinIA
 
 `POST /ia/perguntar`
@@ -310,7 +316,9 @@ Para migrar a estrutura antiga para o modelo simplificado final, existe:
 database/migration_v3_final.sql
 ```
 
-A migração final remove a estrutura antiga de renda extra, categorias detalhadas, transações e revisão mensal. Ela deve ser executada apenas quando a aplicação local estiver pronta para adotar definitivamente o novo modelo.
+A migração preserva saldo, renda, valor planejado para guardar e converte as antigas categorias de despesa em `gastos_mensais`. Depois remove renda extra recorrente, categorias detalhadas, transações e revisão mensal, que não pertencem mais ao escopo final.
+
+O CI testa a migração partindo de uma estrutura legada, confere a preservação dos dados essenciais e executa a migração novamente para detectar problemas de repetição.
 
 Simulações não são persistidas e portanto não exigem tabelas próprias.
 
@@ -324,7 +332,7 @@ src/main/java/...
 src/test/java/...
 ```
 
-A pasta `backend/` é uma cópia legada antiga e não deve ser executada. Ela será removida da versão final do repositório.
+A antiga pasta duplicada `backend/` foi removida da branch de desenvolvimento. Existe apenas um backend oficial no projeto.
 
 ## Executar
 
@@ -346,18 +354,20 @@ Executar todos os testes e gerar o pacote:
 mvn verify
 ```
 
-Os testes automatizados cobrem regras centrais do motor financeiro, comprometimento das metas, análise de gastos, viabilidade de metas e validações dos cenários de simulação.
+Os testes automatizados cobrem regras centrais do motor financeiro, comprometimento das metas, análise de gastos, viabilidade de metas, validações dos cenários de simulação, configuração da IA e carregamento do contexto Spring.
 
 ## CI
 
-A branch `dev/finia-desenvolvimento` possui GitHub Actions. A cada push, o CI executa:
+A branch `dev/finia-desenvolvimento` possui GitHub Actions. A cada push, o CI valida:
 
 ```text
 Backend: mvn verify
-Frontend: npm ci + lint + build
+Banco: migração legada -> schema final
+API: aplicação real + MySQL + smoke tests HTTP
+Frontend atual: npm ci + lint + build
 ```
 
-Assim, mudanças que quebram compilação ou os testes financeiros são detectadas automaticamente.
+O smoke test também verifica que simulações não alteram os dados reais e que metas inviáveis não são persistidas.
 
 ## Tecnologias
 
