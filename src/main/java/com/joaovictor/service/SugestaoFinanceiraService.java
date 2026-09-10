@@ -1,17 +1,25 @@
 package com.joaovictor.service;
 
 import com.joaovictor.model.CapacidadeFinanceira;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+@Service
 public class SugestaoFinanceiraService {
 
     private final MotorFinanceiroService motorFinanceiroService;
 
     public SugestaoFinanceiraService() {
-        this.motorFinanceiroService = new MotorFinanceiroService();
+        this(new MotorFinanceiroService());
+    }
+
+    @Autowired
+    public SugestaoFinanceiraService(MotorFinanceiroService motorFinanceiroService) {
+        this.motorFinanceiroService = motorFinanceiroService;
     }
 
     public List<String> gerarSugestoesDoMesAtual() {
