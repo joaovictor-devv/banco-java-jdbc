@@ -3,7 +3,7 @@ import CurrencyInput from "../components/CurrencyInput";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 import api from "../services/api";
-import { formatarMoeda } from "../utils/finance";
+import { formatarMesReferencia, formatarMoeda } from "../utils/finance";
 
 const cenarios = [
   { id: "normal", icon: "calendar_month", titulo: "Mês normal", descricao: "Veja a evolução mantendo tudo como está." },
@@ -113,18 +113,39 @@ function Simulacoes() {
     return payload;
   }
 
+  function validarCenario() {
+    if (["compra", "imprevisto", "aporte"].includes(cenario) && numero(valor) <= 0) {
+      return "Informe um valor maior que zero para essa simulação.";
+    }
+
+    if (["aumento", "reducao"].includes(cenario) && numero(novaRenda) < 0) {
+      return "A nova renda não pode ser negativa.";
+    }
+
+    const rendaAtual = numero(capacidade?.rendaMensal);
+    if (cenario === "aumento" && numero(novaRenda) <= rendaAtual) {
+      return `Para testar um aumento, informe uma renda maior que ${formatarMoeda(rendaAtual)}.`;
+    }
+
+    if (cenario === "reducao" && numero(novaRenda) >= rendaAtual) {
+      return `Para testar uma redução, informe uma renda menor que ${formatarMoeda(rendaAtual)}.`;
+    }
+
+    if (cenario === "aporte" && metas.length === 0) {
+      return "Crie uma meta antes de testar um valor extra para ela.";
+    }
+
+    return "";
+  }
+
   async function simular(event) {
     event.preventDefault();
     setErro("");
     setExplicacaoIA("");
 
-    if (["compra", "imprevisto", "aporte"].includes(cenario) && numero(valor) <= 0) {
-      setErro("Informe um valor maior que zero para essa simulação.");
-      return;
-    }
-
-    if (["aumento", "reducao"].includes(cenario) && numero(novaRenda) < 0) {
-      setErro("A nova renda não pode ser negativa.");
+    const problema = validarCenario();
+    if (problema) {
+      setErro(problema);
       return;
     }
 
@@ -358,10 +379,20 @@ function Simulacoes() {
       {resultado && (
         <>
           <section className="finia-card mt-6 p-6 sm:p-8">
+            <h2 className="text-xl font-extrabold text-[#0A192F]">Hoje x cenário simulado</h2>
+            <p className="mt-1 text-sm text-slate-500">Compare rapidamente o ponto de partida com o resultado da decisão.</p>
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              <Comparacao label="Saldo" atual={resultado.saldoInicial} depois={resultado.saldoFinalProjetado} />
+              <Comparacao label="Renda mensal" atual={resultado.situacaoAtual?.rendaMensal} depois={resultado.evolucaoMensal?.at(-1)?.rendaMensal} />
+              <Comparacao label="Gastos mensais" atual={resultado.situacaoAtual?.gastosMensais} depois={resultado.evolucaoMensal?.at(-1)?.gastosMensais} inverter />
+            </div>
+          </section>
+
+          <section className="finia-card mt-6 p-6 sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-xl font-extrabold text-[#0A192F]">Evolução mês a mês</h2>
-                <p className="mt-1 text-sm text-slate-500">Passe pelos meses para entender como o cenário evolui.</p>
+                <p className="mt-1 text-sm text-slate-500">Veja como o cenário evolui sem confundir projeção com dinheiro real.</p>
               </div>
               <span className="rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800">PROJEÇÃO</span>
             </div>
@@ -369,7 +400,7 @@ function Simulacoes() {
             <div className="mt-6 flex gap-3 overflow-x-auto pb-2">
               {(resultado.evolucaoMensal || []).map((mes) => (
                 <article key={mes.indiceMes} className="min-w-44 rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{mes.mesReferencia}</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{formatarMesReferencia(mes.mesReferencia)}</p>
                   <p className="finia-number mt-2 text-lg font-extrabold text-[#0A192F]">{formatarMoeda(mes.saldoDisponivelProjetado)}</p>
                   <p className={`finia-number mt-1 text-xs font-bold ${Number(mes.margemMensal) < 0 ? "text-red-600" : "text-emerald-700"}`}>
                     {Number(mes.margemMensal) >= 0 ? "+" : ""}{formatarMoeda(mes.margemMensal)} no mês
@@ -400,7 +431,11 @@ function Simulacoes() {
                     <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-slate-100">
                       <div className="h-full rounded-full bg-cyan-600" style={{ width: `${Math.min(100, Number(meta.progressoProjetadoPercentual || 0))}%` }} />
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">{meta.impacto}</p>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      {meta.concluidaNoPeriodo && meta.mesConclusaoReferencia
+                        ? `Nesse cenário, a meta seria concluída por volta de ${formatarMesReferencia(meta.mesConclusaoReferencia)}.`
+                        : meta.impacto}
+                    </p>
                   </article>
                 ))}
               </div>
@@ -455,6 +490,33 @@ function ResultadoSimulacao({ resultado }) {
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <MiniInfo label="Total guardado como reserva" valor={formatarMoeda(resultado.totalReservaPlanejada)} />
         <MiniInfo label="Total destinado às metas" valor={formatarMoeda(resultado.totalAportadoMetas)} />
+      </div>
+    </div>
+  );
+}
+
+function Comparacao({ label, atual, depois, inverter = false }) {
+  const atualNumero = Number(atual || 0);
+  const depoisNumero = Number(depois || 0);
+  const diferenca = depoisNumero - atualNumero;
+  const melhorou = inverter ? diferenca < 0 : diferenca > 0;
+  const piorou = inverter ? diferenca > 0 : diferenca < 0;
+
+  return (
+    <div className="rounded-2xl bg-slate-50 p-5">
+      <p className="text-sm font-bold text-slate-600">{label}</p>
+      <div className="mt-4 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs text-slate-400">Hoje</p>
+          <p className="finia-number mt-1 font-extrabold text-slate-700">{formatarMoeda(atualNumero)}</p>
+        </div>
+        <span className={`material-symbols-outlined ${melhorou ? "text-emerald-600" : piorou ? "text-red-500" : "text-slate-400"}`}>
+          {melhorou ? "trending_up" : piorou ? "trending_down" : "trending_flat"}
+        </span>
+        <div className="text-right">
+          <p className="text-xs text-slate-400">No final</p>
+          <p className="finia-number mt-1 font-extrabold text-[#0A192F]">{formatarMoeda(depoisNumero)}</p>
+        </div>
       </div>
     </div>
   );
