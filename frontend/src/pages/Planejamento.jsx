@@ -1,385 +1,228 @@
-import { useEffect, useState } from "react";
-import {
-  buscarPerfilFinanceiro,
-  salvarPerfilFinanceiro,
-  atualizarPerfilFinanceiro,
-} from "../services/perfilFinanceiroService";
+import { useEffect, useMemo, useState } from "react";
+import CurrencyInput from "../components/CurrencyInput";
+import PageHeader from "../components/PageHeader";
+import StatusBadge from "../components/StatusBadge";
+import api from "../services/api";
+import { formatarMoeda } from "../utils/finance";
 
-const FORM_INICIAL = {
+const formularioInicial = {
   rendaMensal: "",
-  rendaExtra: "",
-  gastoMoradia: "",
-  gastoAgua: "",
-  gastoEnergia: "",
-  gastoInternet: "",
-  gastoTransporte: "",
-  gastoAlimentacao: "",
-  outrasDespesas: "",
+  gastosMensais: "",
   valorPlanejadoGuardar: "",
-  objetivoPrincipal: "",
 };
 
-function formatarPerfil(dados) {
-  return {
-    rendaMensal: dados.rendaMensal ?? "",
-    rendaExtra: dados.rendaExtra ?? "",
-    gastoMoradia: dados.gastoMoradia ?? "",
-    gastoAgua: dados.gastoAgua ?? "",
-    gastoEnergia: dados.gastoEnergia ?? "",
-    gastoInternet: dados.gastoInternet ?? "",
-    gastoTransporte: dados.gastoTransporte ?? "",
-    gastoAlimentacao: dados.gastoAlimentacao ?? "",
-    outrasDespesas: dados.outrasDespesas ?? "",
-    valorPlanejadoGuardar: dados.valorPlanejadoGuardar ?? "",
-    objetivoPrincipal: dados.objetivoPrincipal ?? "",
-  };
-}
-
 function Planejamento() {
-  const [perfilId, setPerfilId] = useState(null);
-  const [mensagem, setMensagem] = useState("");
-  const [editando, setEditando] = useState(false);
-  const [formOriginal, setFormOriginal] = useState(null);
-  const [form, setForm] = useState(FORM_INICIAL);
+  const [form, setForm] = useState(formularioInicial);
+  const [resumo, setResumo] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [sucesso, setSucesso] = useState("");
 
   useEffect(() => {
-    let ativo = true;
-
-    buscarPerfilFinanceiro()
-      .then((response) => {
-        if (ativo && response.data) {
-          const dadosFormatados = formatarPerfil(response.data);
-          setPerfilId(response.data.id);
-          setForm(dadosFormatados);
-          setFormOriginal(dadosFormatados);
+    async function carregar() {
+      try {
+        const response = await api.get("/orcamento");
+        const dados = response.data;
+        setResumo(dados);
+        setForm({
+          rendaMensal: String(dados.rendaMensal ?? ""),
+          gastosMensais: String(dados.gastosMensais ?? ""),
+          valorPlanejadoGuardar: String(dados.reservaPlanejada ?? ""),
+        });
+      } catch (error) {
+        if (error.response?.status !== 404) {
+          setErro(error.response?.data?.mensagem || "Não foi possível carregar seu orçamento.");
         }
-      })
-      .catch((error) => {
-        console.error("Erro ao carregar perfil financeiro:", error);
-      });
+      } finally {
+        setCarregando(false);
+      }
+    }
 
-    return () => {
-      ativo = false;
-    };
+    carregar();
   }, []);
 
-  async function carregarPerfilFinanceiro() {
-    try {
-      const response = await buscarPerfilFinanceiro();
-      if (response.data) {
-        const dadosFormatados = formatarPerfil(response.data);
-        setPerfilId(response.data.id);
-        setForm(dadosFormatados);
-        setFormOriginal(dadosFormatados);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar perfil financeiro:", error);
-    }
+  const previa = useMemo(() => {
+    const renda = numero(form.rendaMensal);
+    const gastos = numero(form.gastosMensais);
+    const guardar = numero(form.valorPlanejadoGuardar);
+    const metas = numero(resumo?.comprometimentoMensalMetas);
+    const antesMetas = renda - gastos - guardar;
+    const depoisMetas = antesMetas - metas;
+
+    return { renda, gastos, guardar, metas, antesMetas, depoisMetas };
+  }, [form, resumo]);
+
+  function alterar(campo, valor) {
+    setForm((atual) => ({ ...atual, [campo]: valor }));
+    setSucesso("");
   }
 
-  function atualizarCampo(campo, valor) {
-    if (!editando) return;
-
-    setForm((atual) => ({
-      ...atual,
-      [campo]: valor,
-    }));
-  }
-
-  const receitaTotal = numero(form.rendaMensal) + numero(form.rendaExtra);
-  const despesasPrevistas =
-    numero(form.gastoMoradia) +
-    numero(form.gastoAgua) +
-    numero(form.gastoEnergia) +
-    numero(form.gastoInternet) +
-    numero(form.gastoTransporte) +
-    numero(form.gastoAlimentacao) +
-    numero(form.outrasDespesas);
-  const reservaPlanejada = numero(form.valorPlanejadoGuardar);
-  const margemAntesMetas = receitaTotal - despesasPrevistas - reservaPlanejada;
-
-  function ativarEdicao() {
-    setMensagem("");
-    setEditando(true);
-  }
-
-  function cancelarEdicao() {
-    if (formOriginal) {
-      setForm(formOriginal);
-    }
-
-    setMensagem("Alterações descartadas.");
-    setEditando(false);
-  }
-
-  async function salvarPlanejamento(event) {
+  async function salvar(event) {
     event.preventDefault();
-    setMensagem("");
-
-    if (!editando) {
-      setMensagem("Clique em Editar planejamento antes de alterar os dados.");
-      return;
-    }
-
-    const dadosParaBackend = {
-      rendaMensal: numero(form.rendaMensal),
-      rendaExtra: numero(form.rendaExtra),
-      gastoMoradia: numero(form.gastoMoradia),
-      gastoAgua: numero(form.gastoAgua),
-      gastoEnergia: numero(form.gastoEnergia),
-      gastoInternet: numero(form.gastoInternet),
-      gastoTransporte: numero(form.gastoTransporte),
-      gastoAlimentacao: numero(form.gastoAlimentacao),
-      outrasDespesas: numero(form.outrasDespesas),
-      valorPlanejadoGuardar: numero(form.valorPlanejadoGuardar),
-      objetivoPrincipal: form.objetivoPrincipal.trim(),
-    };
+    setErro("");
+    setSucesso("");
+    setSalvando(true);
 
     try {
-      if (perfilId) {
-        await atualizarPerfilFinanceiro(perfilId, dadosParaBackend);
-        setMensagem("Planejamento atualizado com sucesso.");
-      } else {
-        await salvarPerfilFinanceiro(dadosParaBackend);
-        setMensagem("Planejamento cadastrado com sucesso.");
-      }
-
-      setEditando(false);
-      await carregarPerfilFinanceiro();
+      const response = await api.put("/orcamento", {
+        rendaMensal: numero(form.rendaMensal),
+        gastosMensais: numero(form.gastosMensais),
+        valorPlanejadoGuardar: numero(form.valorPlanejadoGuardar),
+      });
+      setResumo(response.data);
+      setSucesso("Orçamento salvo. As análises, metas e simulações já usarão esses valores.");
     } catch (error) {
-      console.error("Erro ao salvar planejamento:", error);
-      setMensagem(error.response?.data?.mensagem || "Erro ao salvar planejamento.");
+      setErro(error.response?.data?.mensagem || "Não foi possível salvar seu orçamento.");
+    } finally {
+      setSalvando(false);
     }
+  }
+
+  if (carregando) {
+    return (
+      <main className="min-h-screen bg-[#F6FAFE] px-4 py-8 sm:px-6 md:px-10 lg:px-12">
+        <p className="font-semibold text-slate-600">Carregando seu orçamento...</p>
+      </main>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-8 md:px-12">
-      <section className="mb-10 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Planejamento Financeiro</h1>
-          <p className="mt-2 text-lg text-slate-500">
-            Organize sua renda, despesas e reserva mensal. Esses valores alimentam o motor financeiro do FinIA.
-          </p>
-        </div>
+    <main className="min-h-screen bg-[#F6FAFE] px-4 py-8 sm:px-6 md:px-10 lg:px-12">
+      <PageHeader
+        pergunta="Quanto entra e quanto sai?"
+        titulo="Meu Orçamento"
+        descricao="Informe só três valores. O FinIA usa isso para calcular quanto sobra para suas metas e para novos gastos."
+      />
 
-        {!editando ? (
-          <button
-            type="button"
-            onClick={ativarEdicao}
-            className="rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            Editar planejamento
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={cancelarEdicao}
-            className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100"
-          >
-            Cancelar edição
-          </button>
-        )}
-      </section>
+      {erro && <Feedback tipo="erro">{erro}</Feedback>}
+      {sucesso && <Feedback>{sucesso}</Feedback>}
 
-      {mensagem && (
-        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm font-medium text-blue-700">
-          {mensagem}
-        </div>
-      )}
-
-      {!editando && (
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          Os dados estão em modo visualização. Clique em <strong>Editar planejamento</strong> para alterar as informações.
-        </div>
-      )}
-
-      {editando && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-700">
-          Você está editando o planejamento. As alterações só serão salvas ao clicar em <strong>Salvar planejamento</strong>.
-        </div>
-      )}
-
-      <section className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-        <CardResumo
-          icone="payments"
-          titulo="Receita total"
-          valor={formatarMoeda(receitaTotal)}
-          descricao="Renda mensal somada com renda extra."
-        />
-        <CardResumo
-          icone="receipt_long"
-          titulo="Despesas previstas"
-          valor={formatarMoeda(despesasPrevistas)}
-          descricao="Soma dos gastos planejados para o mês."
-        />
-        <CardResumo
-          icone="account_balance_wallet"
-          titulo="Margem antes das metas"
-          valor={formatarMoeda(margemAntesMetas)}
-          descricao="Renda menos despesas e valor planejado para guardar."
-          destaque={margemAntesMetas >= 0 ? "positivo" : "negativo"}
-        />
-      </section>
-
-      <section className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
-            <span className="material-symbols-outlined">calculate</span>
+      <section className="grid gap-6 xl:grid-cols-[1fr_0.85fr]">
+        <form onSubmit={salvar} className="finia-card p-6 sm:p-8">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-800">
+              <span className="material-symbols-outlined">edit_note</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-[#0A192F]">Seu mês em 3 números</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Não precisa separar contas por categoria. Use uma média que represente sua rotina.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Base do motor financeiro</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-              O FinIA combina estes dados com suas metas e seu saldo atual para calcular quanto ainda pode ser comprometido e quanto é recomendável gastar.
-            </p>
-          </div>
-        </div>
-      </section>
 
-      <form
-        onSubmit={salvarPlanejamento}
-        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-      >
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-slate-900">Receitas mensais</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Informe sua renda principal e possíveis valores extras.
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-            <CampoNumero
-              label="Renda mensal"
+          <div className="mt-7 grid gap-6">
+            <CurrencyInput
+              label="Quanto você ganha por mês?"
+              ajuda="Use sua renda mensal que costuma se repetir."
               value={form.rendaMensal}
-              disabled={!editando}
-              onChange={(valor) => atualizarCampo("rendaMensal", valor)}
-              placeholder="Ex: 2500"
+              onChange={(event) => alterar("rendaMensal", event.target.value)}
+              placeholder="2.500,00"
+              required
             />
-            <CampoNumero
-              label="Renda extra"
-              value={form.rendaExtra}
-              disabled={!editando}
-              onChange={(valor) => atualizarCampo("rendaExtra", valor)}
-              placeholder="Ex: 300"
+            <CurrencyInput
+              label="Quanto você costuma gastar por mês?"
+              ajuda="Pense na média dos gastos necessários e do dia a dia."
+              value={form.gastosMensais}
+              onChange={(event) => alterar("gastosMensais", event.target.value)}
+              placeholder="1.300,00"
+              required
             />
-          </div>
-        </section>
-
-        <section className="mb-8 border-t border-slate-100 pt-8">
-          <h2 className="text-xl font-semibold text-slate-900">Despesas previstas</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Cadastre os principais gastos planejados para o mês.
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <CampoNumero label="Moradia" value={form.gastoMoradia} disabled={!editando} onChange={(v) => atualizarCampo("gastoMoradia", v)} placeholder="Ex: 800" />
-            <CampoNumero label="Água" value={form.gastoAgua} disabled={!editando} onChange={(v) => atualizarCampo("gastoAgua", v)} placeholder="Ex: 80" />
-            <CampoNumero label="Energia" value={form.gastoEnergia} disabled={!editando} onChange={(v) => atualizarCampo("gastoEnergia", v)} placeholder="Ex: 150" />
-            <CampoNumero label="Internet" value={form.gastoInternet} disabled={!editando} onChange={(v) => atualizarCampo("gastoInternet", v)} placeholder="Ex: 100" />
-            <CampoNumero label="Transporte" value={form.gastoTransporte} disabled={!editando} onChange={(v) => atualizarCampo("gastoTransporte", v)} placeholder="Ex: 250" />
-            <CampoNumero label="Alimentação" value={form.gastoAlimentacao} disabled={!editando} onChange={(v) => atualizarCampo("gastoAlimentacao", v)} placeholder="Ex: 600" />
-            <CampoNumero label="Outras despesas" value={form.outrasDespesas} disabled={!editando} onChange={(v) => atualizarCampo("outrasDespesas", v)} placeholder="Ex: 200" />
-            <CampoNumero
-              label="Valor planejado para guardar"
+            <CurrencyInput
+              label="Quanto você quer guardar por mês?"
+              ajuda="Esse valor fica protegido antes de calcular quanto pode gastar."
               value={form.valorPlanejadoGuardar}
-              disabled={!editando}
-              onChange={(v) => atualizarCampo("valorPlanejadoGuardar", v)}
-              placeholder="Ex: 400"
+              onChange={(event) => alterar("valorPlanejadoGuardar", event.target.value)}
+              placeholder="300,00"
+              required
             />
-          </div>
-        </section>
-
-        <section className="border-t border-slate-100 pt-8">
-          <h2 className="text-xl font-semibold text-slate-900">Objetivo principal</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Informe o principal foco financeiro do momento.
-          </p>
-
-          <textarea
-            value={form.objetivoPrincipal}
-            disabled={!editando}
-            onChange={(e) => atualizarCampo("objetivoPrincipal", e.target.value)}
-            rows="4"
-            maxLength="255"
-            className={`mt-6 w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600 ${
-              !editando ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""
-            }`}
-            placeholder="Ex: montar reserva de emergência, quitar dívidas, comprar um notebook..."
-          />
-        </section>
-
-        <div className="mt-8 flex flex-col gap-4 rounded-2xl bg-slate-50 p-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="font-semibold text-slate-900">Resumo do planejamento</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Margem antes das metas: <span className={`font-semibold ${margemAntesMetas >= 0 ? "text-blue-600" : "text-red-500"}`}>{formatarMoeda(margemAntesMetas)}</span>
-            </p>
           </div>
 
           <button
             type="submit"
-            disabled={!editando}
-            className={`rounded-xl px-6 py-3 font-semibold shadow-sm transition ${
-              editando
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "cursor-not-allowed bg-slate-300 text-slate-500"
-            }`}
+            disabled={salvando}
+            className="finia-button-primary mt-8 w-full px-5 py-3.5 sm:w-auto"
           >
-            Salvar planejamento
+            {salvando ? "Salvando..." : "Salvar orçamento"}
           </button>
+        </form>
+
+        <div className="space-y-6">
+          <section className="finia-card p-6 sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-slate-500">Resultado</p>
+                <h2 className="mt-1 text-xl font-extrabold text-[#0A192F]">Quanto sobra?</h2>
+              </div>
+              {resumo?.classificacao && <StatusBadge valor={resumo.classificacao} />}
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <Linha label="Renda" valor={previa.renda} sinal="+" />
+              <Linha label="Gastos" valor={previa.gastos} sinal="−" />
+              <Linha label="Quanto quer guardar" valor={previa.guardar} sinal="−" />
+              <div className="border-t border-slate-200 pt-4">
+                <Linha label="Sobra antes das metas" valor={previa.antesMetas} forte />
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-cyan-50/70 p-5">
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="font-semibold text-slate-600">Suas metas usam por mês</span>
+                <strong className="finia-number text-[#0A192F]">− {formatarMoeda(previa.metas)}</strong>
+              </div>
+              <div className="mt-4 flex items-end justify-between gap-4 border-t border-cyan-100 pt-4">
+                <div>
+                  <p className="text-sm font-bold text-slate-600">Disponível depois de tudo</p>
+                  <p className="mt-1 text-xs text-slate-500">Esse é o valor usado para avaliar novas decisões.</p>
+                </div>
+                <strong className={`finia-number whitespace-nowrap text-2xl font-extrabold ${previa.depoisMetas < 0 ? "text-red-600" : "text-cyan-800"}`}>
+                  {formatarMoeda(previa.depoisMetas)}
+                </strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white/60 p-5">
+            <div className="flex gap-3">
+              <span className="material-symbols-outlined mt-0.5 text-cyan-800">lightbulb</span>
+              <div>
+                <p className="font-bold text-[#0A192F]">Por que só três valores?</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  O objetivo do FinIA é ser rápido. Você informa o básico e o sistema faz os cálculos mais difíceis por trás.
+                </p>
+              </div>
+            </div>
+          </section>
         </div>
-      </form>
+      </section>
     </main>
   );
 }
 
-function CardResumo({ icone, titulo, valor, descricao, destaque }) {
-  const corValor =
-    destaque === "positivo"
-      ? "text-blue-600"
-      : destaque === "negativo"
-      ? "text-red-500"
-      : "text-slate-900";
-
+function Linha({ label, valor, sinal = "", forte = false }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-        <span className="material-symbols-outlined text-blue-600">{icone}</span>
-      </div>
-      <p className="text-sm font-medium text-slate-500">{titulo}</p>
-      <h2 className={`mt-2 text-2xl font-bold ${corValor}`}>{valor}</h2>
-      <p className="mt-2 text-sm text-slate-500">{descricao}</p>
+    <div className={`flex items-center justify-between gap-4 text-sm ${forte ? "font-extrabold text-[#0A192F]" : "text-slate-600"}`}>
+      <span>{label}</span>
+      <span className="finia-number whitespace-nowrap">
+        {sinal && <span className="mr-1 text-slate-400">{sinal}</span>}
+        {formatarMoeda(valor)}
+      </span>
     </div>
   );
 }
 
-function CampoNumero({ label, value, onChange, placeholder, disabled }) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-600">{label}</label>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-600 ${
-          disabled ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""
-        }`}
-        placeholder={placeholder}
-      />
-    </div>
-  );
+function Feedback({ children, tipo }) {
+  const classes = tipo === "erro"
+    ? "border-red-200 bg-red-50 text-red-700"
+    : "border-emerald-200 bg-emerald-50 text-emerald-700";
+  return <div className={`mb-6 rounded-xl border px-4 py-3 text-sm font-semibold ${classes}`}>{children}</div>;
 }
 
 function numero(valor) {
-  return Number(valor || 0);
-}
-
-function formatarMoeda(valor) {
-  return Number(valor || 0).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
+  const convertido = Number(valor);
+  return Number.isFinite(convertido) ? convertido : 0;
 }
 
 export default Planejamento;
