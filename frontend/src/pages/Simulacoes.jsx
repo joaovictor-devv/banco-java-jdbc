@@ -59,20 +59,23 @@ function Simulacoes() {
     carregar();
   }, []);
 
-  useEffect(() => {
+  const cenarioAtual = useMemo(() => cenarios.find((item) => item.id === cenario), [cenario]);
+
+  function selecionarCenario(novoCenario) {
+    setCenario(novoCenario);
     setResultado(null);
+    setUltimoPayload(null);
     setExplicacaoIA("");
     setErro("");
     setMesEvento(1);
     setValor("");
+
     if (capacidade) {
       setNovaRenda(String(capacidade.rendaMensal ?? ""));
       setRendaPersonalizada(String(capacidade.rendaMensal ?? ""));
       setGastosPersonalizados(String(capacidade.gastosMensais ?? ""));
     }
-  }, [cenario, capacidade]);
-
-  const cenarioAtual = useMemo(() => cenarios.find((item) => item.id === cenario), [cenario]);
+  }
 
   function montarPayload() {
     const payload = {
@@ -202,7 +205,7 @@ function Simulacoes() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setCenario(item.id)}
+                onClick={() => selecionarCenario(item.id)}
                 className={`rounded-2xl border p-5 text-left transition ${
                   ativo
                     ? "border-cyan-400 bg-cyan-50 shadow-sm"
@@ -354,7 +357,7 @@ function Simulacoes() {
 
       {resultado && (
         <>
-          <section className="mt-6 finia-card p-6 sm:p-8">
+          <section className="finia-card mt-6 p-6 sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-xl font-extrabold text-[#0A192F]">Evolução mês a mês</h2>
@@ -380,7 +383,7 @@ function Simulacoes() {
           </section>
 
           {resultado.projecoesMetas?.length > 0 && (
-            <section className="mt-6 finia-card p-6 sm:p-8">
+            <section className="finia-card mt-6 p-6 sm:p-8">
               <h2 className="text-xl font-extrabold text-[#0A192F]">E suas metas?</h2>
               <p className="mt-1 text-sm text-slate-500">Veja como cada objetivo ficaria nesse cenário.</p>
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -442,7 +445,9 @@ function ResultadoSimulacao({ resultado }) {
 
       <div className={`mt-5 rounded-2xl border p-5 ${melhorou ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
         <p className={`font-extrabold ${melhorou ? "text-emerald-800" : "text-amber-800"}`}>
-          {melhorou ? `Seu saldo aumentaria ${formatarMoeda(resultado.variacaoSaldo)} nesse período.` : `Seu saldo diminuiria ${formatarMoeda(Math.abs(Number(resultado.variacaoSaldo)))} nesse período.`}
+          {melhorou
+            ? `Seu saldo aumentaria ${formatarMoeda(resultado.variacaoSaldo)} nesse período.`
+            : `Seu saldo diminuiria ${formatarMoeda(Math.abs(Number(resultado.variacaoSaldo)))} nesse período.`}
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">{resultado.mensagem}</p>
       </div>
@@ -461,9 +466,9 @@ function MiniGrafico({ dados }) {
   const min = Math.min(...valores);
   const max = Math.max(...valores);
   const amplitude = Math.max(1, max - min);
-  const pontos = valores.map((valor, index) => {
+  const pontos = valores.map((valorAtual, index) => {
     const x = dados.length === 1 ? 50 : (index / (dados.length - 1)) * 100;
-    const y = 90 - ((valor - min) / amplitude) * 75;
+    const y = 90 - ((valorAtual - min) / amplitude) * 75;
     return `${x},${y}`;
   }).join(" ");
 
