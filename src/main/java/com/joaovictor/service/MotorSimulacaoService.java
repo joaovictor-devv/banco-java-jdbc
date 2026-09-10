@@ -7,6 +7,7 @@ import com.joaovictor.model.Meta;
 import com.joaovictor.model.ProjecaoMensal;
 import com.joaovictor.model.ProjecaoMeta;
 import com.joaovictor.model.ResultadoSimulacaoFinanceira;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+@Service
 public class MotorSimulacaoService {
 
     private static final BigDecimal CEM = new BigDecimal("100");
