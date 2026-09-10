@@ -88,7 +88,10 @@ jobs:
           curl -fsS -X POST http://localhost:8080/metas \
             -H 'Content-Type: application/json' \
             -d '{"nome":"Notebook","valorAlvo":5000,"prazoMeses":10,"valorInicial":1000,"prioridade":"alta","descricao":"Meta do teste CI"}' \
-            | jq -e '.analise.classificacao == "VIAVEL"'
+            > /tmp/meta-criada.json
+
+          jq -e '.analise.classificacao == "VIAVEL" and .meta.id > 0' /tmp/meta-criada.json
+          META_ID=$(jq -r '.meta.id' /tmp/meta-criada.json)
 
           curl -fsS http://localhost:8080/analise/capacidade-gastos \
             | jq -e '.margemAposMetas == 500 and .capacidadeGastoImediato == 500'
@@ -103,6 +106,13 @@ jobs:
             -d '{"nomeCenario":"Teste CI","meses":3,"eventos":[{"mes":2,"tipo":"GASTO_EXTRAORDINARIO","valor":600}]}' \
             | jq -e '.saldoFinalProjetado == 2100 and .totalGastosExtraordinarios == 600 and .projecoesMetas[0].valorProjetado == 2200'
 
+          # Uma simulação nunca pode alterar saldo, orçamento ou progresso reais.
+          curl -fsS http://localhost:8080/perfil-financeiro \
+            | jq -e '.saldoAtual == 1200 and .rendaMensal == 2500 and .gastosMensais == 1300'
+
+          curl -fsS "http://localhost:8080/metas/$META_ID" \
+            | jq -e '.valorInicial == 1000 and .valorAlvo == 5000'
+
           STATUS_INVIAVEL=$(curl -sS -o /tmp/meta-inviavel.json -w '%{http_code}' \
             -X POST http://localhost:8080/metas \
             -H 'Content-Type: application/json' \
@@ -110,6 +120,28 @@ jobs:
 
           test "$STATUS_INVIAVEL" = "422"
           jq -e '.analise.classificacao == "INVIAVEL"' /tmp/meta-inviavel.json
+
+          # Meta inviável precisa ser bloqueada antes da persistência.
+          curl -fsS http://localhost:8080/metas \
+            | jq -e 'length == 1'
+
+          curl -fsS -X PATCH "http://localhost:8080/metas/$META_ID/progresso" \
+            -H 'Content-Type: application/json' \
+            -d '{"valorAtual":1500}' \
+            | jq -e '.meta.valorInicial == 1500'
+
+          curl -fsS "http://localhost:8080/metas/$META_ID/viabilidade" \
+            | jq -e '.valorRestante == 3500 and .viavel == true'
+
+          curl -fsS -X PUT http://localhost:8080/perfil-financeiro/saldo \
+            -H 'Content-Type: application/json' \
+            -d '{"saldoAtual":1800}' \
+            | jq -e '.saldoAtual == 1800'
+
+          STATUS_404=$(curl -sS -o /tmp/meta-nao-encontrada.json -w '%{http_code}' \
+            http://localhost:8080/metas/999999)
+          test "$STATUS_404" = "404"
+          jq -e '.erro == "RECURSO_NAO_ENCONTRADO"' /tmp/meta-nao-encontrada.json
 
   frontend:
     name: Frontend React
