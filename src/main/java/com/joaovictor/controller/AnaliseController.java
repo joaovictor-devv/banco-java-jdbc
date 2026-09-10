@@ -23,12 +23,26 @@ import java.util.List;
 @RequestMapping("/analise")
 public class AnaliseController {
 
-    private final SugestaoFinanceiraService sugestaoService = new SugestaoFinanceiraService();
-    private final SituacaoFinanceiraService situacaoService = new SituacaoFinanceiraService();
-    private final MotorFinanceiroService motorFinanceiroService = new MotorFinanceiroService();
-    private final AnaliseGastoService analiseGastoService = new AnaliseGastoService();
-    private final AnaliseMetaService analiseMetaService = new AnaliseMetaService();
-    private final MetaService metaService = new MetaService();
+    private final SugestaoFinanceiraService sugestaoService;
+    private final SituacaoFinanceiraService situacaoService;
+    private final MotorFinanceiroService motorFinanceiroService;
+    private final AnaliseGastoService analiseGastoService;
+    private final AnaliseMetaService analiseMetaService;
+    private final MetaService metaService;
+
+    public AnaliseController(SugestaoFinanceiraService sugestaoService,
+                             SituacaoFinanceiraService situacaoService,
+                             MotorFinanceiroService motorFinanceiroService,
+                             AnaliseGastoService analiseGastoService,
+                             AnaliseMetaService analiseMetaService,
+                             MetaService metaService) {
+        this.sugestaoService = sugestaoService;
+        this.situacaoService = situacaoService;
+        this.motorFinanceiroService = motorFinanceiroService;
+        this.analiseGastoService = analiseGastoService;
+        this.analiseMetaService = analiseMetaService;
+        this.metaService = metaService;
+    }
 
     @GetMapping("/situacao")
     public ResponseEntity<SituacaoFinanceira> situacao() {
