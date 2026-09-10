@@ -47,8 +47,102 @@ jobs:
       - name: Compilar e testar backend
         run: mvn -B verify
 
-      - name: Preparar schema MySQL
+      - name: Validar migração do banco legado
+        shell: bash
         run: |
+          set -euo pipefail
+
+          docker run --rm --network host mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot -e \
+            'DROP DATABASE IF EXISTS banco_app; CREATE DATABASE banco_app;'
+
+          cat > /tmp/schema-legado.sql <<'SQL'
+          USE banco_app;
+
+          CREATE TABLE transacoes (
+              id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              tipo VARCHAR(20) NOT NULL,
+              valor DECIMAL(12,2) NOT NULL,
+              descricao VARCHAR(120) NOT NULL,
+              categoria VARCHAR(50) NOT NULL,
+              data_transacao DATE NOT NULL
+          );
+
+          CREATE TABLE metas (
+              id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              nome VARCHAR(100) NOT NULL,
+              valor_alvo DECIMAL(12,2) NOT NULL,
+              prazo_meses INT NOT NULL,
+              valor_inicial DECIMAL(12,2) NOT NULL,
+              prioridade VARCHAR(30) NOT NULL,
+              descricao VARCHAR(255)
+          );
+
+          CREATE TABLE perfil_financeiro (
+              id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              renda_mensal DECIMAL(12,2) NOT NULL,
+              renda_extra DECIMAL(12,2),
+              gasto_moradia DECIMAL(12,2) NOT NULL,
+              gasto_agua DECIMAL(12,2) NOT NULL,
+              gasto_energia DECIMAL(12,2) NOT NULL,
+              gasto_internet DECIMAL(12,2) NOT NULL,
+              gasto_transporte DECIMAL(12,2) NOT NULL,
+              gasto_alimentacao DECIMAL(12,2) NOT NULL,
+              outras_despesas DECIMAL(12,2),
+              valor_planejado_guardar DECIMAL(12,2) NOT NULL,
+              objetivo_principal VARCHAR(255) NOT NULL,
+              saldo_atual DECIMAL(12,2) NOT NULL DEFAULT 0
+          );
+
+          CREATE TABLE revisoes_mensais (
+              id BIGINT PRIMARY KEY AUTO_INCREMENT,
+              mes_referencia VARCHAR(30) NOT NULL,
+              gasto_inesperado BOOLEAN NOT NULL,
+              valor_incorreto BOOLEAN NOT NULL,
+              revisar_categorias BOOLEAN NOT NULL,
+              observacoes VARCHAR(500)
+          );
+
+          INSERT INTO perfil_financeiro (
+              renda_mensal, renda_extra, gasto_moradia, gasto_agua,
+              gasto_energia, gasto_internet, gasto_transporte,
+              gasto_alimentacao, outras_despesas, valor_planejado_guardar,
+              objetivo_principal, saldo_atual
+          ) VALUES (
+              2500, 300, 500, 100, 150, 100, 150, 250, 50, 300,
+              'Notebook', 1200
+          );
+          SQL
+
+          docker run --rm --network host -i mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot < /tmp/schema-legado.sql
+
+          # Executa duas vezes para provar que a migração é segura para repetição.
+          docker run --rm --network host -i mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot < database/migration_v3_final.sql
+          docker run --rm --network host -i mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot < database/migration_v3_final.sql
+
+          PERFIL=$(docker run --rm --network host mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot -N -B -e \
+            "SELECT nome, saldo_atual, renda_mensal, gastos_mensais, valor_planejado_guardar FROM banco_app.perfil_financeiro LIMIT 1")
+          test "$PERFIL" = $'Usuário\t1200.00\t2500.00\t1300.00\t300.00'
+
+          COLUNAS_ANTIGAS=$(docker run --rm --network host mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot -N -B -e \
+            "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='banco_app' AND TABLE_NAME='perfil_financeiro' AND COLUMN_NAME IN ('renda_extra','gasto_moradia','gasto_agua','gasto_energia','gasto_internet','gasto_transporte','gasto_alimentacao','outras_despesas','objetivo_principal')")
+          test "$COLUNAS_ANTIGAS" = "0"
+
+          TABELAS_REMOVIDAS=$(docker run --rm --network host mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot -N -B -e \
+            "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='banco_app' AND TABLE_NAME IN ('transacoes','revisoes_mensais')")
+          test "$TABELAS_REMOVIDAS" = "0"
+
+      - name: Preparar schema MySQL limpo
+        run: |
+          docker run --rm --network host mysql:8.4 \
+            mysql -h127.0.0.1 -uroot -proot -e \
+            'DROP DATABASE IF EXISTS banco_app; CREATE DATABASE banco_app;'
           docker run --rm --network host -i mysql:8.4 \
             mysql -h127.0.0.1 -uroot -proot < database/schema.sql
 
