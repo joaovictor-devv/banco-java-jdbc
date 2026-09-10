@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import ScrollToTop from "./components/ScrollToTop";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Insights from "./pages/Insights";
@@ -10,6 +11,7 @@ import Simulacoes from "./pages/Simulacoes";
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Sidebar />
       <div className="pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
         <Routes>
@@ -19,6 +21,7 @@ function App() {
           <Route path="/simulacoes" element={<Simulacoes />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/perfil" element={<Perfil />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </BrowserRouter>
