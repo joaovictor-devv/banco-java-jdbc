@@ -12,13 +12,29 @@ export function formatarPercentual(valor) {
   })}%`;
 }
 
+export function formatarMesReferencia(valor) {
+  if (!/^\d{4}-\d{2}$/.test(String(valor || ""))) {
+    return valor || "";
+  }
+
+  const [ano, mes] = String(valor).split("-").map(Number);
+  const data = new Date(ano, mes - 1, 1);
+  const texto = new Intl.DateTimeFormat("pt-BR", {
+    month: "short",
+    year: "2-digit",
+  }).format(data);
+
+  return texto.replace(" de ", "/").replace(".", "");
+}
+
 export function formatarClassificacao(valor) {
   const classificacoes = {
     SAUDAVEL: "Saudável",
     APERTADA: "Atenção",
     EQUILIBRADA: "Sem margem livre",
     SEM_RENDA: "Sem renda cadastrada",
-    DEFICIT: "Saldo negativo",
+    DEFICIT: "Saldo projetado negativo",
+    DEFICIT_MENSAL: "Mês no negativo",
     GASTOS_ACIMA_DA_RENDA: "Gastos acima da renda",
     DESPESAS_ACIMA_DA_RENDA: "Gastos acima da renda",
     RESERVA_INVIAVEL: "Valor para guardar muito alto",
@@ -48,6 +64,7 @@ export function classificacaoEhProblema(valor) {
   return [
     "SEM_RENDA",
     "DEFICIT",
+    "DEFICIT_MENSAL",
     "GASTOS_ACIMA_DA_RENDA",
     "DESPESAS_ACIMA_DA_RENDA",
     "RESERVA_INVIAVEL",
