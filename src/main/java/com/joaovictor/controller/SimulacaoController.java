@@ -10,7 +10,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/simulacoes")
 public class SimulacaoController {
 
-    private final SimulacaoFinanceiraService service = new SimulacaoFinanceiraService();
+    private final SimulacaoFinanceiraService service;
+
+    public SimulacaoController(SimulacaoFinanceiraService service) {
+        this.service = service;
+    }
 
     @PostMapping
     public ResponseEntity<ResultadoSimulacaoFinanceira> simular(
