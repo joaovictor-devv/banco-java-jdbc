@@ -75,6 +75,9 @@ jobs:
             exit 1
           fi
 
+          curl -fsS http://localhost:8080/ia/status \
+            | jq -e '.configurada == false'
+
           curl -fsS -X PUT http://localhost:8080/perfil-financeiro \
             -H 'Content-Type: application/json' \
             -d '{"nome":"Teste CI","saldoAtual":1200}' \
