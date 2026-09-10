@@ -1,6 +1,7 @@
 package com.joaovictor.controller;
 
 import com.joaovictor.dto.SimulacaoFinanceiraRequest;
+import com.joaovictor.dto.StatusIAResponse;
 import com.joaovictor.model.AnaliseIARequest;
 import com.joaovictor.service.FiniaIAService;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,11 @@ public class FiniaIAController {
 
     public FiniaIAController(FiniaIAService service) {
         this.service = service;
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<StatusIAResponse> status() {
+        return ResponseEntity.ok(service.status());
     }
 
     @PostMapping("/perguntar")
