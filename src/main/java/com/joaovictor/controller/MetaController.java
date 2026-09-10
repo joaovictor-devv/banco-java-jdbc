@@ -18,8 +18,13 @@ import java.util.List;
 @RequestMapping("/metas")
 public class MetaController {
 
-    private final MetaService service = new MetaService();
-    private final AnaliseMetaService analiseMetaService = new AnaliseMetaService();
+    private final MetaService service;
+    private final AnaliseMetaService analiseMetaService;
+
+    public MetaController(MetaService service, AnaliseMetaService analiseMetaService) {
+        this.service = service;
+        this.analiseMetaService = analiseMetaService;
+    }
 
     @PostMapping
     public ResponseEntity<MetaAnaliseResponse> cadastrar(@RequestBody MetaRequest request) {
