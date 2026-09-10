@@ -1,6 +1,7 @@
 package com.joaovictor.service;
 
 import com.joaovictor.dto.SimulacaoFinanceiraRequest;
+import com.joaovictor.dto.StatusIAResponse;
 import com.joaovictor.model.AnaliseIARequest;
 import com.joaovictor.model.ProjecaoMensal;
 import com.joaovictor.model.ProjecaoMeta;
@@ -18,6 +19,14 @@ public class FiniaIAService {
                           SimulacaoFinanceiraService simulacaoFinanceiraService) {
         this.openAIService = openAIService;
         this.simulacaoFinanceiraService = simulacaoFinanceiraService;
+    }
+
+    public StatusIAResponse status() {
+        boolean configurada = openAIService.isConfigurada();
+        String mensagem = configurada
+                ? "A FinIA está configurada para utilizar a OpenAI quando o usuário solicitar uma explicação."
+                : "A FinIA ainda não está configurada. Defina OPENAI_API_KEY para habilitar as explicações por IA.";
+        return new StatusIAResponse(configurada, mensagem);
     }
 
     public String analisar(AnaliseIARequest request) {
