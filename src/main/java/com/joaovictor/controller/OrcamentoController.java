@@ -10,7 +10,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/orcamento")
 public class OrcamentoController {
 
-    private final OrcamentoService service = new OrcamentoService();
+    private final OrcamentoService service;
+
+    public OrcamentoController(OrcamentoService service) {
+        this.service = service;
+    }
 
     @GetMapping
     public ResponseEntity<OrcamentoResumo> buscar() {
