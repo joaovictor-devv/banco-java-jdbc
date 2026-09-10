@@ -14,8 +14,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/perfil-financeiro")
 public class PerfilFinanceiroController {
 
-    private final PerfilFinanceiroService service = new PerfilFinanceiroService();
-    private final SituacaoFinanceiraService situacaoService = new SituacaoFinanceiraService();
+    private final PerfilFinanceiroService service;
+    private final SituacaoFinanceiraService situacaoService;
+
+    public PerfilFinanceiroController(PerfilFinanceiroService service,
+                                      SituacaoFinanceiraService situacaoService) {
+        this.service = service;
+        this.situacaoService = situacaoService;
+    }
 
     @PostMapping
     public ResponseEntity<PerfilFinanceiro> cadastrar(@RequestBody PerfilFinanceiroRequest request) {
