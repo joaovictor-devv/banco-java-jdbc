@@ -4,6 +4,13 @@ USE banco_app;
 -- Pode ser executada novamente sem tentar recriar/remover colunas já migradas.
 -- Antes de executar em um banco com dados importantes, faça um backup.
 
+-- Limpa uma procedure que possa ter ficado de uma execução antiga/interrompida.
+DROP PROCEDURE IF EXISTS finia_drop_coluna_antiga;
+
+-- Guarda a configuração atual do Safe Update Mode desta sessão.
+SET @finia_safe_updates_original = @@SQL_SAFE_UPDATES;
+SET SQL_SAFE_UPDATES = 0;
+
 -- 1) Adiciona nome caso ainda não exista.
 SET @nome_existe = (
     SELECT COUNT(*)
@@ -85,40 +92,46 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- 5) Procedure temporária usada apenas para tornar a remoção de colunas segura.
-DROP PROCEDURE IF EXISTS finia_drop_coluna_antiga;
-DELIMITER //
-CREATE PROCEDURE finia_drop_coluna_antiga(IN coluna VARCHAR(64))
-BEGIN
-    SET @coluna_existe = (
-        SELECT COUNT(*)
-        FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'perfil_financeiro'
-          AND COLUMN_NAME = coluna
-    );
+-- 5) Remove com segurança cada coluna antiga, sem procedures nem DELIMITER.
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'renda_extra');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `renda_extra`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-    IF @coluna_existe > 0 THEN
-        SET @sql_drop = CONCAT('ALTER TABLE perfil_financeiro DROP COLUMN `', coluna, '`');
-        PREPARE stmt_drop FROM @sql_drop;
-        EXECUTE stmt_drop;
-        DEALLOCATE PREPARE stmt_drop;
-    END IF;
-END //
-DELIMITER ;
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'gasto_moradia');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `gasto_moradia`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-CALL finia_drop_coluna_antiga('renda_extra');
-CALL finia_drop_coluna_antiga('gasto_moradia');
-CALL finia_drop_coluna_antiga('gasto_agua');
-CALL finia_drop_coluna_antiga('gasto_energia');
-CALL finia_drop_coluna_antiga('gasto_internet');
-CALL finia_drop_coluna_antiga('gasto_transporte');
-CALL finia_drop_coluna_antiga('gasto_alimentacao');
-CALL finia_drop_coluna_antiga('outras_despesas');
-CALL finia_drop_coluna_antiga('objetivo_principal');
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'gasto_agua');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `gasto_agua`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-DROP PROCEDURE finia_drop_coluna_antiga;
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'gasto_energia');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `gasto_energia`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'gasto_internet');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `gasto_internet`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'gasto_transporte');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `gasto_transporte`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'gasto_alimentacao');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `gasto_alimentacao`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'outras_despesas');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `outras_despesas`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @coluna_existe = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'perfil_financeiro' AND COLUMN_NAME = 'objetivo_principal');
+SET @sql = IF(@coluna_existe > 0, 'ALTER TABLE perfil_financeiro DROP COLUMN `objetivo_principal`', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- 6) Funcionalidades removidas do escopo final.
 DROP TABLE IF EXISTS transacoes;
 DROP TABLE IF EXISTS revisoes_mensais;
+
+-- Restaura o Safe Update Mode para o valor que estava antes da migração.
+SET SQL_SAFE_UPDATES = @finia_safe_updates_original;
