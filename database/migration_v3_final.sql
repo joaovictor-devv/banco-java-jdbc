@@ -1,7 +1,7 @@
 USE banco_app;
 
--- Migração da estrutura antiga para o modelo final simplificado do FinIA.
--- Pode ser executada novamente sem tentar recriar/remover colunas que já foram migradas.
+-- Migração única da estrutura antiga para o modelo final simplificado do FinIA.
+-- Pode ser executada novamente sem tentar recriar/remover colunas já migradas.
 -- Antes de executar em um banco com dados importantes, faça um backup.
 
 -- 1) Adiciona nome caso ainda não exista.
@@ -22,7 +22,25 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- 2) Adiciona o total simplificado de gastos caso ainda não exista.
+-- 2) Garante saldo_atual mesmo em bancos que não passaram pela migration_v2.
+SET @saldo_atual_existe = (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'perfil_financeiro'
+      AND COLUMN_NAME = 'saldo_atual'
+);
+
+SET @sql = IF(
+    @saldo_atual_existe = 0,
+    'ALTER TABLE perfil_financeiro ADD COLUMN saldo_atual DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER nome',
+    'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- 3) Adiciona o total simplificado de gastos caso ainda não exista.
 SET @gastos_mensais_existe = (
     SELECT COUNT(*)
     FROM information_schema.COLUMNS
@@ -40,7 +58,7 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- 3) Se o banco ainda possuir todas as categorias antigas, soma os valores
+-- 4) Se o banco ainda possuir todas as categorias antigas, soma os valores
 -- para preservar o total mensal antes de remover as colunas antigas.
 SET @categorias_antigas = (
     SELECT COUNT(*)
@@ -67,7 +85,7 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- 4) Procedure temporária usada apenas para tornar a remoção de colunas segura.
+-- 5) Procedure temporária usada apenas para tornar a remoção de colunas segura.
 DROP PROCEDURE IF EXISTS finia_drop_coluna_antiga;
 DELIMITER //
 CREATE PROCEDURE finia_drop_coluna_antiga(IN coluna VARCHAR(64))
@@ -101,6 +119,6 @@ CALL finia_drop_coluna_antiga('objetivo_principal');
 
 DROP PROCEDURE finia_drop_coluna_antiga;
 
--- 5) Funcionalidades removidas do escopo final.
+-- 6) Funcionalidades removidas do escopo final.
 DROP TABLE IF EXISTS transacoes;
 DROP TABLE IF EXISTS revisoes_mensais;
