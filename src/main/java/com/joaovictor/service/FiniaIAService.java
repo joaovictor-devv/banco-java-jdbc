@@ -14,9 +14,10 @@ public class FiniaIAService {
     private final OpenAIService openAIService;
     private final SimulacaoFinanceiraService simulacaoFinanceiraService;
 
-    public FiniaIAService(OpenAIService openAIService) {
+    public FiniaIAService(OpenAIService openAIService,
+                          SimulacaoFinanceiraService simulacaoFinanceiraService) {
         this.openAIService = openAIService;
-        this.simulacaoFinanceiraService = new SimulacaoFinanceiraService();
+        this.simulacaoFinanceiraService = simulacaoFinanceiraService;
     }
 
     public String analisar(AnaliseIARequest request) {
