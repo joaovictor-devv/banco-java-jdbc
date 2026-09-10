@@ -18,12 +18,16 @@ public class ContextoFinanceiroIAService {
     private final AnaliseMetaService analiseMetaService;
     private final MotorFinanceiroService motorFinanceiroService;
 
-    public ContextoFinanceiroIAService() {
-        this.situacaoService = new SituacaoFinanceiraService();
-        this.sugestaoService = new SugestaoFinanceiraService();
-        this.metaService = new MetaService();
-        this.analiseMetaService = new AnaliseMetaService();
-        this.motorFinanceiroService = new MotorFinanceiroService();
+    public ContextoFinanceiroIAService(SituacaoFinanceiraService situacaoService,
+                                       SugestaoFinanceiraService sugestaoService,
+                                       MetaService metaService,
+                                       AnaliseMetaService analiseMetaService,
+                                       MotorFinanceiroService motorFinanceiroService) {
+        this.situacaoService = situacaoService;
+        this.sugestaoService = sugestaoService;
+        this.metaService = metaService;
+        this.analiseMetaService = analiseMetaService;
+        this.motorFinanceiroService = motorFinanceiroService;
     }
 
     public ContextoFinanceiroIA montar() {
