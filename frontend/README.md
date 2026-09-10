@@ -1,16 +1,76 @@
-# React + Vite
+# Frontend FinIA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend final do TCC FinIA, construído com React, Vite, Tailwind CSS e Axios.
 
-Currently, two official plugins are available:
+## Objetivo de experiência
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Cada tela responde uma pergunta simples:
 
-## React Compiler
+```text
+Dashboard       -> Como estou hoje?
+Meu Orçamento   -> Quanto entra e quanto sai?
+Metas           -> Consigo alcançar isso?
+Simulações      -> O que acontece se eu fizer isso?
+FinIA           -> O que esses números significam?
+Perfil          -> Quanto tenho agora?
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+A interface evita termos bancários e financeiros desnecessariamente técnicos. O princípio do produto é:
 
-## Expanding the ESLint configuration
+> Você informa o básico. O FinIA calcula, simula e explica.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Rotas
+
+```text
+/               Dashboard
+/planejamento   Meu Orçamento
+/metas          Metas
+/simulacoes     Simulações
+/insights       FinIA
+/perfil         Perfil
+```
+
+## Integração
+
+As páginas consomem a API Spring Boot configurada em `src/services/api.js`.
+
+Por padrão:
+
+```text
+http://localhost:8080
+```
+
+Para usar outro endereço, configure:
+
+```text
+VITE_API_URL
+```
+
+## Executar
+
+```bash
+npm install
+npm run dev
+```
+
+## Validar
+
+```bash
+npm run lint
+npm run build
+```
+
+## Identidade visual
+
+O frontend segue o conceito **Deep Ocean Tide**:
+
+- fonte Manrope;
+- Deep Navy;
+- Deep Teal;
+- Seafoam/Cyan;
+- fundo claro;
+- cards brancos;
+- estados positivos, de atenção e de problema bem diferenciados;
+- layout responsivo para desktop e celular.
+
+Todos os valores monetários exibidos ao usuário usam Real brasileiro (`R$`).
