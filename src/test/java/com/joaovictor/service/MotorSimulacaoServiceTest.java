@@ -40,6 +40,23 @@ class MotorSimulacaoServiceTest {
     }
 
     @Test
+    void deveSuportarHorizonteMaximoDeSessentaMeses() {
+        SimulacaoFinanceiraRequest request = request(60);
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        );
+
+        assertThat(resultado.getMeses()).isEqualTo(60);
+        assertThat(resultado.getEvolucaoMensal()).hasSize(60);
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("55200");
+        assertThat(resultado.getTotalReservaPlanejada()).isEqualByComparingTo("18000");
+        assertThat(resultado.getClassificacaoFinal()).isEqualTo("SAUDAVEL");
+    }
+
+    @Test
     void gastoExtraordinarioDeveAfetarSomenteOMesEscolhido() {
         SimulacaoFinanceiraRequest request = request(3);
         request.setEventos(List.of(evento(2, "GASTO_EXTRAORDINARIO", "600", null)));
@@ -77,6 +94,23 @@ class MotorSimulacaoServiceTest {
     }
 
     @Test
+    void alteracaoDeGastosDevePersistirNosMesesSeguintes() {
+        SimulacaoFinanceiraRequest request = request(3);
+        request.setEventos(List.of(evento(2, "ALTERAR_GASTOS", "1600", null)));
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        );
+
+        assertThat(resultado.getEvolucaoMensal().get(0).getMargemMensal()).isEqualByComparingTo("900");
+        assertThat(resultado.getEvolucaoMensal().get(1).getMargemMensal()).isEqualByComparingTo("600");
+        assertThat(resultado.getEvolucaoMensal().get(2).getMargemMensal()).isEqualByComparingTo("600");
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("3300");
+    }
+
+    @Test
     void rendaExtraordinariaDeveSerSomadaUmaUnicaVez() {
         SimulacaoFinanceiraRequest request = request(3);
         request.setEventos(List.of(evento(2, "RENDA_EXTRAORDINARIA", "500", null)));
@@ -91,6 +125,31 @@ class MotorSimulacaoServiceTest {
         assertThat(resultado.getEvolucaoMensal().get(1).getRendaExtraordinaria()).isEqualByComparingTo("500");
         assertThat(resultado.getEvolucaoMensal().get(2).getRendaExtraordinaria()).isZero();
         assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("4400");
+    }
+
+    @Test
+    void deveCombinarMudancasPersistentesEEventosUnicos() {
+        SimulacaoFinanceiraRequest request = request(4);
+        request.setEventos(List.of(
+                evento(2, "ALTERAR_GASTOS", "1500", null),
+                evento(3, "RENDA_EXTRAORDINARIA", "500", null),
+                evento(4, "GASTO_EXTRAORDINARIO", "600", null)
+        ));
+
+        ResultadoSimulacaoFinanceira resultado = service.simular(
+                request,
+                capacidade("2500", "1300", "300", "0", "1200"),
+                List.of()
+        );
+
+        assertThat(resultado.getEvolucaoMensal()).hasSize(4);
+        assertThat(resultado.getEvolucaoMensal().get(0).getMargemMensal()).isEqualByComparingTo("900");
+        assertThat(resultado.getEvolucaoMensal().get(1).getMargemMensal()).isEqualByComparingTo("700");
+        assertThat(resultado.getEvolucaoMensal().get(2).getMargemMensal()).isEqualByComparingTo("1200");
+        assertThat(resultado.getEvolucaoMensal().get(3).getMargemMensal()).isEqualByComparingTo("100");
+        assertThat(resultado.getSaldoFinalProjetado()).isEqualByComparingTo("4100");
+        assertThat(resultado.getTotalRendasExtraordinarias()).isEqualByComparingTo("500");
+        assertThat(resultado.getTotalGastosExtraordinarios()).isEqualByComparingTo("600");
     }
 
     @Test
