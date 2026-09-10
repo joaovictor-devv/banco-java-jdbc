@@ -1,1 +1,125 @@
 @import "tailwindcss";
+
+:root {
+  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #171c1f;
+  background: #f6fafe;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: #f0f4f8;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f6fafe;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(6, 182, 212, 0.22);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #b9eaff;
+  color: #0a192f;
+}
+
+.material-symbols-outlined {
+  font-size: 21px;
+  line-height: 1;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.finia-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 4px 20px -2px rgba(10, 25, 47, 0.04),
+    0 2px 6px -1px rgba(10, 25, 47, 0.02);
+}
+
+.finia-input {
+  width: 100%;
+  border: 1px solid #dbe3ea;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  color: #0a192f;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.finia-input:focus {
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+  outline: none;
+}
+
+.finia-input::placeholder {
+  color: #94a3b8;
+}
+
+.finia-button-primary {
+  border-radius: 0.75rem;
+  background: #0a192f;
+  color: #ffffff;
+  font-weight: 700;
+  transition: background-color 150ms ease, transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.finia-button-primary:hover:not(:disabled) {
+  background: #0e7490;
+  box-shadow: 0 5px 16px rgba(14, 116, 144, 0.2);
+}
+
+.finia-button-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.finia-button-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.finia-button-secondary {
+  border: 1px solid rgba(14, 116, 144, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(14, 116, 144, 0.07);
+  color: #0d5c75;
+  font-weight: 700;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.finia-button-secondary:hover:not(:disabled) {
+  border-color: rgba(14, 116, 144, 0.3);
+  background: rgba(14, 116, 144, 0.12);
+}
+
+.finia-number {
+  font-variant-numeric: tabular-nums;
+}
