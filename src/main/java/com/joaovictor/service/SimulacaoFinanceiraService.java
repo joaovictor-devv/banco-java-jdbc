@@ -5,12 +5,15 @@ import com.joaovictor.dto.SimulacaoFinanceiraRequest;
 import com.joaovictor.model.CapacidadeFinanceira;
 import com.joaovictor.model.Meta;
 import com.joaovictor.model.ResultadoSimulacaoFinanceira;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+@Service
 public class SimulacaoFinanceiraService {
 
     private static final int MAX_EVENTOS = 100;
@@ -27,9 +30,16 @@ public class SimulacaoFinanceiraService {
     private final MotorSimulacaoService motorSimulacaoService;
 
     public SimulacaoFinanceiraService() {
-        this.motorFinanceiroService = new MotorFinanceiroService();
-        this.metaService = new MetaService();
-        this.motorSimulacaoService = new MotorSimulacaoService();
+        this(new MotorFinanceiroService(), new MetaService(), new MotorSimulacaoService());
+    }
+
+    @Autowired
+    public SimulacaoFinanceiraService(MotorFinanceiroService motorFinanceiroService,
+                                      MetaService metaService,
+                                      MotorSimulacaoService motorSimulacaoService) {
+        this.motorFinanceiroService = motorFinanceiroService;
+        this.metaService = metaService;
+        this.motorSimulacaoService = motorSimulacaoService;
     }
 
     public ResultadoSimulacaoFinanceira simular(SimulacaoFinanceiraRequest request) {
