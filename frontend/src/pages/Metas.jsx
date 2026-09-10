@@ -26,22 +26,31 @@ function Metas() {
   const [editandoProgresso, setEditandoProgresso] = useState(null);
   const [valorProgresso, setValorProgresso] = useState("");
 
-  async function carregarMetas() {
-    try {
-      const response = await api.get("/metas/resumo");
-      setMetas(response.data || []);
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        setErro(error.response?.data?.mensagem || "Não foi possível carregar suas metas.");
-      }
-    } finally {
-      setCarregando(false);
-    }
-  }
-
   useEffect(() => {
-    carregarMetas();
+    let ativo = true;
+
+    api.get("/metas/resumo")
+      .then((response) => {
+        if (ativo) setMetas(response.data || []);
+      })
+      .catch((error) => {
+        if (ativo && error.response?.status !== 404) {
+          setErro(error.response?.data?.mensagem || "Não foi possível carregar suas metas.");
+        }
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, []);
+
+  async function recarregarMetas() {
+    const response = await api.get("/metas/resumo");
+    setMetas(response.data || []);
+  }
 
   function alterar(campo, valor) {
     setForm((atual) => ({ ...atual, [campo]: valor }));
@@ -89,12 +98,12 @@ function Metas() {
       setForm(formularioInicial);
       setAnalise(null);
       setSucesso("Meta criada. O FinIA já passou a considerar esse valor nos seus cálculos.");
-      await carregarMetas();
+      await recarregarMetas();
     } catch (error) {
       if (error.response?.status === 422 && error.response?.data?.analise) {
         setAnalise(error.response.data.analise);
       }
-      setErro(error.response?.data?.mensagem || error.response?.data?.message || "Não foi possível criar a meta.");
+      setErro(error.response?.data?.mensagem || "Não foi possível criar a meta.");
     } finally {
       setCriando(false);
     }
@@ -108,7 +117,7 @@ function Metas() {
       setEditandoProgresso(null);
       setValorProgresso("");
       setSucesso("Progresso atualizado.");
-      await carregarMetas();
+      await recarregarMetas();
     } catch (error) {
       setErro(error.response?.data?.mensagem || "Não foi possível atualizar o progresso.");
     }
@@ -121,7 +130,7 @@ function Metas() {
     try {
       await api.delete(`/metas/${id}`);
       setSucesso("Meta excluída.");
-      await carregarMetas();
+      await recarregarMetas();
     } catch (error) {
       setErro(error.response?.data?.mensagem || "Não foi possível excluir a meta.");
     }
@@ -150,7 +159,7 @@ function Metas() {
         </div>
 
         {carregando ? (
-          <div className="mt-4 finia-card p-6 text-sm font-semibold text-slate-500">Carregando metas...</div>
+          <div className="finia-card mt-4 p-6 text-sm font-semibold text-slate-500">Carregando metas...</div>
         ) : metas.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/60 p-7 text-center">
             <span className="material-symbols-outlined !text-[32px] text-cyan-800">flag</span>
@@ -249,7 +258,9 @@ function Metas() {
             </label>
 
             <label className="sm:col-span-2">
-              <span className="text-sm font-bold text-[#0A192F]">Observação <span className="font-medium text-slate-400">(opcional)</span></span>
+              <span className="text-sm font-bold text-[#0A192F]">
+                Observação <span className="font-medium text-slate-400">(opcional)</span>
+              </span>
               <textarea
                 value={form.descricao}
                 onChange={(event) => alterar("descricao", event.target.value)}
@@ -274,7 +285,7 @@ function Metas() {
           {!analise ? (
             <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-center">
               <span className="material-symbols-outlined !text-[32px] text-slate-400">calculate</span>
-              <p className="mt-3 font-bold text-slate-700">Preencha a meta e clique em “Ver se essa meta cabe”.</p>
+              <p className="mt-3 font-bold text-slate-700">Preencha a meta e veja se ela cabe.</p>
               <p className="mt-1 text-sm leading-6 text-slate-500">O cálculo considera seu orçamento e todas as metas já cadastradas.</p>
             </div>
           ) : (
@@ -288,7 +299,10 @@ function Metas() {
 
 function MetaCard({ item, editando, valorProgresso, onAbrirProgresso, onCancelarProgresso, onChangeProgresso, onSalvarProgresso, onExcluir }) {
   const { meta, analise } = item;
-  const percentual = Math.min(100, Math.max(0, Number(meta.valorInicial || 0) / Math.max(1, Number(meta.valorAlvo || 1)) * 100));
+  const percentual = Math.min(
+    100,
+    Math.max(0, (Number(meta.valorInicial || 0) / Math.max(1, Number(meta.valorAlvo || 1))) * 100),
+  );
 
   return (
     <article className="finia-card p-6">
@@ -300,7 +314,12 @@ function MetaCard({ item, editando, valorProgresso, onAbrirProgresso, onCancelar
           </div>
           <p className="mt-1 text-sm text-slate-500">{meta.prazoMeses} meses · importância {rotuloPrioridade(meta.prioridade)}</p>
         </div>
-        <button onClick={onExcluir} className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600" aria-label={`Excluir meta ${meta.nome}`}>
+        <button
+          type="button"
+          onClick={onExcluir}
+          className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+          aria-label={`Excluir meta ${meta.nome}`}
+        >
           <span className="material-symbols-outlined">delete</span>
         </button>
       </div>
@@ -319,7 +338,7 @@ function MetaCard({ item, editando, valorProgresso, onAbrirProgresso, onCancelar
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <MiniInfo label="Falta guardar" valor={formatarMoeda(analise.valorRestante)} />
-        <MiniInfo label="Por mês" valor={formatarMoeda(analise.valorMensalNecessario)} />
+        <MiniInfo label="Precisa guardar por mês" valor={formatarMoeda(analise.valorMensalNecessario)} />
       </div>
 
       {editando ? (
@@ -339,9 +358,7 @@ function MetaCard({ item, editando, valorProgresso, onAbrirProgresso, onCancelar
           <button type="button" onClick={onCancelarProgresso} className="mt-2 text-xs font-bold text-slate-500 hover:text-slate-700">Cancelar</button>
         </div>
       ) : (
-        <button type="button" onClick={onAbrirProgresso} className="finia-button-secondary mt-5 px-4 py-2.5 text-sm">
-          Atualizar progresso
-        </button>
+        <button type="button" onClick={onAbrirProgresso} className="finia-button-secondary mt-5 px-4 py-2.5 text-sm">Atualizar progresso</button>
       )}
     </article>
   );
@@ -352,20 +369,22 @@ function ResultadoMeta({ analise, criando, onCriar }) {
     <div className="mt-6">
       <div className="flex items-center justify-between gap-3">
         <StatusBadge valor={analise.classificacao} />
-        <span className="text-xs font-bold text-slate-500">Calculado com sua situação atual</span>
+        <span className="text-xs font-bold text-slate-500">Com sua situação atual</span>
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <MiniInfo label="Falta guardar" valor={formatarMoeda(analise.valorRestante)} />
         <MiniInfo label="Precisa guardar por mês" valor={formatarMoeda(analise.valorMensalNecessario)} destaque />
-        <MiniInfo label="Hoje você tem disponível" valor={formatarMoeda(analise.margemDisponivelParaMeta)} />
+        <MiniInfo label="Hoje existe disponível" valor={formatarMoeda(analise.margemDisponivelParaMeta)} />
         <MiniInfo label="Outras metas já usam" valor={formatarMoeda(analise.comprometimentoOutrasMetas)} />
       </div>
 
       {analise.viavel ? (
         <div className={`mt-5 rounded-2xl border p-5 ${analise.classificacao === "VIAVEL_COM_ATENCAO" ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
           <p className="font-extrabold text-[#0A192F]">
-            {analise.classificacao === "VIAVEL_COM_ATENCAO" ? "Essa meta é possível, mas vai deixar pouco espaço livre." : "Essa meta cabe no seu orçamento."}
+            {analise.classificacao === "VIAVEL_COM_ATENCAO"
+              ? "Essa meta é possível, mas vai deixar pouco espaço livre."
+              : "Essa meta cabe no seu orçamento."}
           </p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Ela usará {formatarPercentual(analise.percentualMargemComprometida)} do que está disponível para uma nova meta.
